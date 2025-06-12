@@ -1,4 +1,4 @@
-const { Plan } = require("../models/plan.model");
+const  Plan  = require("../models/plan.model");
 
 const { UserModel } = require("../models/user.model");
 const { getToken } = require("../utils/getTokenGenerate");
@@ -14,7 +14,6 @@ const { TransactionModel } = require("../models/transaction.model");
 const TradingAccount = require("../models/tradingAccount.model");
 const investmentModel = require("../models/investment.model");
 
-const Plan  = require("../models/plan.model")
 exports.UserRegister = async (req, res) => {
   try {
     const { name, email, mobile, password, referralCode } = req.body;
@@ -740,7 +739,7 @@ exports.purchasePlans = async (req, res) => {
     const user = req.user;
 
     const {
-      investamount,
+      investmentAmount,
       tradingAcc,
       mainPassword,
       tradingPlatform,
@@ -785,7 +784,7 @@ exports.purchasePlans = async (req, res) => {
     const investAmount = new investmentModel({
       userId: user._id,
       plan: plan._id,
-      investAmount: investamount, // Amount invested by the user
+      investAmount: investmentAmount, // Amount invested by the user
     });
 
     investAmount.save();
@@ -793,7 +792,7 @@ exports.purchasePlans = async (req, res) => {
 
     user.isFirstPurchase = true;
 
-    user.firstPurchaseAmount = investamount;
+    user.firstPurchaseAmount = investmentAmount;
 
     user.activationdetails= {
       isActive: true,
