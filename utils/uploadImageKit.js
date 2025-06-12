@@ -4,7 +4,7 @@ const {v4:uuid} = require("uuid");
 const imagekit = new ImageKit({
     publicKey: process.env.IMAGEKIT_PUBLIC_KEY, // Ensure this is set in your environment variables
     privateKey: process.env.IMAGEKIT_PRIVATE_KEY, // Ensure this is set in your environment variables
-    urlEndpoint: process.env.IMAGEKIT_URL_ENDPOINT // Ensure this is set in your environment variables
+    urlEndpoint: process.env.IMAGEKIT_URLENDPOINT // Ensure this is set in your environment variables
 });
 
 module.exports.uploadImageToImageKit = async (file, folder) => {

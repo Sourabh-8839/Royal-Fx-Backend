@@ -6,20 +6,22 @@
 // exports.getComparePassword = async function (user,password){
 //     return await bcrypt.compare(password,user.password)
 // }
-const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
 
-const secretKey = 'your_secret_key'; // Replace with your actual secret key
-
-exports.getHashPassword = function (password) {
-    const payload = { password:password };
-    return jwt.sign(payload, secretKey, { expiresIn: '1y' });
+// Hash the password
+exports.getHashPassword = async function (password) {
+    const saltRounds = 10;
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
+    return hashedPassword;
 };
 
-exports.getComparePassword = function (user,password) {
+// Compare the password
+exports.getComparePassword = async function (user, password) {
     try {
-        const decode = jwt.verify(user.password, secretKey);
-        return decode.password === password;
+        // user.password is the hashed password stored in DB
+        const isMatch = await bcrypt.compare(password, user.password);
+        return isMatch;
     } catch (err) {
-        return null;
+        return false;
     }
 };
