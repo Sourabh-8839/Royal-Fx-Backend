@@ -1,3 +1,5 @@
+const { Plan } = require("../models/plan.model");
+
 const { UserModel } = require("../models/user.model");
 const { getToken } = require("../utils/getTokenGenerate");
 const { getComparePassword, getHashPassword } = require("../utils/getPassword.password");
@@ -9,6 +11,9 @@ const {
 } = require("../utils/generateRandomReferralLink");
 const randomUser = require("../utils/username");
 const { TransactionModel } = require("../models/transaction.model");
+const TradingAccount = require("../models/tradingAccount.model");
+const investmentModel = require("../models/investment.model");
+
 const Plan  = require("../models/plan.model")
 exports.UserRegister = async (req, res) => {
   try {
@@ -728,6 +733,82 @@ exports.deposit = async (req, res) => {
         return res.status(500).json({ success: false, message: error.message });
     }
 }
+
+exports.purchasePlans = async (req, res) => {
+  try {
+    // Step 1: Validate Input
+    const user = req.user;
+
+    const {
+      investamount,
+      tradingAcc,
+      mainPassword,
+      tradingPlatform,
+      serverName,
+      firstName,
+      lastName,
+      email,
+      password,
+      planId,
+    } = req.body;
+
+
+    if ( !tradingAcc|| !mainPassword || !tradingPlatform || !serverName || !firstName || !lastName || !email || !password) {
+      return res.status(400).json({ msg: "All fields are required" });
+    }
+
+    // Step 3: Check if the plan exists
+    const plan = await Plan.findById(planId);
+    if (!plan) {
+      return res.status(400).json({ msg: "Plan not found" });
+    }
+
+
+    // Step 6: Create a new trading account
+    const newAccount = new TradingAccount({
+      userId:user._id,
+      planId:plan._id,
+      tradingAcc,
+      mainPassword,
+      tradingPlatform,
+      serverName,
+      firstName,
+      lastName,
+      email,
+      password// Storing hashed password for security
+    });
+
+    // Step 7: Save the new trading account to the database
+    await newAccount.save();
+
+
+    const investAmount = new investmentModel({
+      userId: user._id,
+      plan: plan._id,
+      investAmount: investamount, // Amount invested by the user
+    });
+
+    investAmount.save();
+
+
+    user.isFirstPurchase = true;
+
+    user.firstPurchaseAmount = investamount;
+
+    user.activationdetails= {
+      isActive: true,
+      activeDate: new Date(),
+    };
+
+    await user.save();
+
+    // Step 8: Send success response
+    res.status(201).json({ msg: "Trading account created successfully", account: newAccount });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ msg: "Server error" });
+  }
+};
 
 exports.getPlans = async(req , res)=>{
     try {

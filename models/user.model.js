@@ -38,7 +38,8 @@ const userSchema = new mongoose.Schema({
     transaction:{
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Transaction'  
-    }
+    },
+    firstPurchaseAmount: { type: Number, default: 0 },
 }, { timestamps: true, versionKey: false });
 
 // // // Exclude the password field by default when converting documents to JSON or objects

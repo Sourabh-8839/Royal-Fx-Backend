@@ -36,6 +36,8 @@ router.get('/get-user-details/:id', UserController.getUserDetails)
 
 router.post('/deposit-amount', authenticateUser, UserController.deposit);
 
+router.post('/purchase-products', authenticateUser, UserController.purchasePlans);
+
 
 //---------------------GET PLANS--------------------------
 router.get("/get-plans" , UserController.getPlans)
