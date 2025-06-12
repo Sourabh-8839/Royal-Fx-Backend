@@ -4,11 +4,184 @@ const { getComparePassword, getHashPassword } = require("../utils/getPassword.pa
 const { getOtpGenerate } = require("../utils/getOtpGenerate");
 const { sendToOtp } = require("../utils/sendtootp.nodemailer");
 const { uploadImageToImageKit } = require("../utils/uploadImageKit");
-
-
 const {
     generateRandomReferralLink,
 } = require("../utils/generateRandomReferralLink");
+const randomUser = require("../utils/username");
+
+exports.UserRegister = async (req, res) => {
+  try {
+    const { name, email, mobile, password, referralCode } = req.body;
+
+    if (!name || !email || !mobile || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "All fields are required",
+      });
+    }
+
+    const isFirstUser = (await UserModel.countDocuments()) === 0;
+
+    if (!isFirstUser && !referralCode) {
+      return res.status(400).json({
+        success: false,
+        message: "Referral code is required",
+      });
+    }
+
+    const existingUser = await UserModel.findOne({ email });
+
+    if (existingUser) {
+      if (existingUser.otpdetails?.isVerified) {
+        return res.status(400).json({
+          success: false,
+          message: "Email already exists",
+        });
+      } else {
+        // Unverified user => update info and re-send OTP
+        const { otp, expireOtp } = getOtpGenerate();
+        const hashPassword = await getHashPassword(password);
+
+        existingUser.name = name.trim();
+        existingUser.mobile = mobile;
+        existingUser.password = hashPassword;
+        existingUser.otpdetails.otp = otp;
+        existingUser.otpdetails.expireOtp = expireOtp;
+
+        await existingUser.save();
+
+        await sendToOtp({
+          otp,
+          user: existingUser,
+          subject: "Verify your account (New OTP)",
+        });
+
+        return res.status(200).json({
+          success: true,
+          message: "Previous unverified user updated. OTP re-sent.",
+          data: {
+            email: existingUser.email,
+            username: existingUser.username,
+            referredBy: existingUser.referredBy,
+          },
+        });
+      }
+    }
+
+    const generatedUsername = randomUser();
+    let referredByUser = null;
+
+    if (referralCode) {
+      referredByUser = await UserModel.findOne({ username: referralCode });
+      if (!referredByUser) {
+        return res.status(400).json({
+          success: false,
+          message: "Referral code not found",
+        });
+      }
+    }
+
+    const { otp, expireOtp } = getOtpGenerate();
+    const hashPassword = await getHashPassword(password);
+
+    const newUser = new UserModel({
+      name: name.trim(),
+      email,
+      mobile,
+      password: hashPassword,
+      username: generatedUsername,
+      referredBy: referredByUser?._id,
+      otpdetails: {
+        otp,
+        expireOtp,
+      },
+    });
+
+    await newUser.save();
+
+    if (referredByUser) {
+      referredByUser.partners.push(newUser._id);
+      await referredByUser.save();
+    }
+
+    await sendToOtp({
+      otp,
+      user: newUser,
+      subject: "Verify your account",
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: "User registered successfully",
+      data: {
+        name: newUser.name,
+        email: newUser.email,
+        mobile: newUser.mobile,
+        username: newUser.username,
+        referredBy: newUser.referredBy,
+        isFirstPurchase: newUser.isFirstPurchase,
+        createdAt: newUser.createdAt,
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+
+
+exports.UserOTPVerify = async (req, res) => {
+  const { email, otp } = req.body;
+
+  try {
+    const user = await UserModel.findOne({ email });
+
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid credentials",
+      });
+    }
+
+    if (
+      !user.otpdetails ||
+      user.otpdetails.otp !== otp ||
+      new Date(user.otpdetails.expireOtp) < new Date()
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid or expired OTP",
+      });
+    }
+
+    user.otpdetails.isVerified = true;
+    user.otpdetails.otp = null;
+    user.otpdetails.expireOtp = null;
+
+    await user.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "User account verified successfully.",
+      data: {
+        name: user.name,
+        email: user.email,
+        mobile: user.mobile,
+        username: user.username,
+        isVerified: user.otpdetails.isVerified,
+        isFirstPurchase: user.isFirstPurchase,
+        createdAt: user.createdAt,
+      },
+    });
+  } catch (error) {
+    console.error("OTP Verification Error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};
+
 
 exports.UserProfile = async (req, res) => {
     try {
@@ -20,190 +193,6 @@ exports.UserProfile = async (req, res) => {
         });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
-    }
-};
-
-exports.UserRegister = async (req, res) => {
-    try {
-        const { firstName, lastName, email, mobileNumber, password, referral } =
-            req.body;
-        console.log(req.body);
-        if (!firstName || !lastName || !email || !mobileNumber || !password)
-            return res
-                .status(400)
-                .json({ success: false, message: "All fields are required" });
-        const userEmailFind = await UserModel.findOne({
-            "email.primary": email,
-        });
-        const username = `${firstName.trim()} ${lastName.trim()}`;
-        const newReferral = generateRandomReferralLink();
-        const { otp, expireOtp } = getOtpGenerate();
-        const hashPassword = await getHashPassword(password);
-        if (userEmailFind) {
-            if (userEmailFind.otpdetails.isVerified)
-                return res
-                    .status(400)
-                    .json({ success: false, message: ShowMessage.emailExists });
-            const newUser = await UserModel.findByIdAndUpdate(
-                userEmailFind._id,
-                {
-                    name: {
-                        username,
-                        firstname: firstName.trim(),
-                        lastname: lastName.trim(),
-                    },
-                    email: {
-                        primary: email,
-                    },
-                    mobile: {
-                        primaryMobile: mobileNumber,
-                    },
-                    password: hashPassword,
-                    otpdetails: {
-                        otp: otp,
-                        expireOtp: expireOtp,
-                    },
-                    referralLink: newReferral,
-                    sponsor: referralFind,
-                    role: "vendor",
-                },
-                { new: true }
-            );
-            // await sendToOtp({otp,user:newUser,subject:EmailSendMessage.subjectVerify});
-            await newUser.save();
-            return res.status(201).json({
-                success: true,
-                message: ShowMessage.registerMessage,
-                data: newUser,
-            });
-        }
-        const userModelFind = await UserModel.findOne({
-            "mobile.primaryMobile": mobileNumber,
-        });
-        if (userModelFind)
-            return res
-                .status(400)
-                .json({ success: false, message: ShowMessage.mobileExists });
-        if (referral) {
-            const referralFind = await UserModel.findOne({
-                referralLink: referral,
-            });
-            if (!referralFind)
-                return res.status(400).json({
-                    success: false,
-                    message: ShowMessage.referralNotExists,
-                });
-            const newUser = new UserModel({
-                name: {
-                    username,
-                    firstname: firstName.trim(),
-                    lastname: lastName.trim(),
-                },
-                email: {
-                    primary: email,
-                },
-                mobile: {
-                    primaryMobile: mobileNumber,
-                },
-                password: hashPassword,
-                otpdetails: {
-                    otp: otp,
-                    expireOtp: expireOtp,
-                },
-                referralLink: newReferral,
-                sponsor: referralFind,
-                role: "vendor",
-            });
-            await sendToOtp({
-                otp,
-                user: newUser,
-                subject: EmailSendMessage.subjectVerify,
-            });
-            referralFind.partners.push(newUser._id);
-            await referralFind.save();
-            await newUser.save();
-            return res.status(201).json({
-                success: true,
-                message: ShowMessage.registerMessage,
-                data: newUser,
-            });
-        }
-        // const userModelFind = await UserModel.findOne({'mobile.primaryMobile':mobileNumber});
-        // if(userModelFind) return res.status(400).json({success:false,message: ShowMessage.mobileExists});
-        const newUser = new UserModel({
-            name: {
-                username,
-                firstname: firstName.trim(),
-                lastname: lastName.trim(),
-            },
-            email: { primary: email },
-            mobile: { primaryMobile: mobileNumber },
-            password: hashPassword,
-            otpdetails: { otp: otp, expireOtp: expireOtp },
-            referralLink: newReferral,
-            role: "vendor",
-        });
-        await sendToOtp({
-            otp,
-            user: newUser,
-            subject: EmailSendMessage.subjectVerify,
-        });
-        if (referral) {
-            const referralFind = await UserModel.findOne({
-                referralLink: referral,
-            });
-            if (!referralFind)
-                return res.status(400).json({
-                    success: false,
-                    message: ShowMessage.referralNotExists,
-                });
-            referralFind.partners.push(newUser._id);
-            await referralFind.save();
-        }
-        await newUser.save();
-        return res.status(201).json({
-            success: true,
-            message: ShowMessage.registerMessage,
-            data: newUser,
-        });
-    } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
-    }
-};
-
-exports.UserOTPVerify = async (req, res) => {
-    const { email, otp } = req.body;
-    try {
-        const user = await UserModel.findOne({ "email.primary": email });
-        if (!user)
-            return res
-                .status(400)
-                .json({ success: false, message: "Invalid credentials" });
-        if (
-            user.otpdetails.otp !== otp ||
-            user.otpdetails.otpExpire < Date.now()
-        )
-            return res
-                .status(400)
-                .json({ success: false, message: "Invalid or expired OTP" });
-        user.otpdetails.isVerified = true;
-        user.otpdetails.otp = null;
-        user.otpdetails.expireOtp = null;
-        // const token = await getToken(user)
-        // user.token = token
-        await user.save();
-        // res.cookie('token', token, {
-        //     httpOnly: true,
-        //     secure: process.env.NODE_ENV === 'production',
-        //     maxAge: 30 * 24 * 60 * 60 * 1000, // 30 day expiration
-        // });
-        res.status(200).json({
-            success: true,
-            message: "User Account verified successfully.",
-            data: user,
-        });
-    } catch (error) {
-        res.status(500).json({ success: false, message: "Server error" });
     }
 };
 
@@ -244,113 +233,114 @@ exports.UserChangePassword = async (req, res) => {
 };
 
 exports.UserRegenerateOTP = async (req, res) => {
-    try {
-        const { email } = req.body;
-        if (!email)
-            return res
-                .status(400)
-                .json({ success: false, message: "Email is required." });
-        const user = await UserModel.findOne({ "email.primary": email });
-        if (!user)
-            return res
-                .status(400)
-                .json({ success: false, message: "User not exists." });
-        const { otp, expireOtp } = getOtpGenerate();
-        user.otpdetails.otp = otp;
-        user.otpdetails.expireOtp = expireOtp;
-        const vf = await sendToOtp({
-            subject: "Bionova Resend OTP Verification Code.",
-            user: user,
-            otp,
-        });
-        await user.save();
-        console.log(user);
-        return res.status(200).json({
-            success: true,
-            message:
-                "OTP has been regenerated. Please check your Gmail account for the OTP.",
-            user,
-            vf,
-        });
-    } catch (error) { }
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: "Email is required.",
+      });
+    }
+
+    const user = await UserModel.findOne({ email });
+
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: "User does not exist.",
+      });
+    }
+
+    const { otp, expireOtp } = getOtpGenerate();
+    user.otpdetails.otp = otp;
+    user.otpdetails.expireOtp = expireOtp;
+    user.otpdetails.isVerified = false;
+
+    const otpResult = await sendToOtp({
+      subject: "Royal-FX Resend OTP Verification Code",
+      user: user,
+      otp,
+    });
+
+    await user.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "OTP has been regenerated. Please check your email.",
+      data: {
+        email: user.email,
+        username: user.username,
+        otpSent: true,
+      },
+    });
+  } catch (error) {
+    console.error("Error regenerating OTP:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Something went wrong. Please try again later.",
+    });
+  }
 };
 
+
 exports.UserLogin = async (req, res) => {
-    const { email, password } = req.body;
-    if (!email || !password)
-        return res
-            .status(500)
-            .json({ success: false, message: "All field Required." });
-    try {
-        const user = await UserModel.findOne({ "email.primary": email });
-        if (!user)
-            return res
-                .status(400)
-                .json({ success: false, message: "Vendor not Exists." });
-        if (user.isBlocked)
-            return res.status(400).json({
-                success: false,
-                message:
-                    "Vendor is blocked. Contact Admin for further process.",
-                status: "blocked",
-                data: user,
-            });
-        if (user.isVendorVerified === "requested")
-            return res.status(400).json({
-                success: false,
-                message: "Fill The form for verification.",
-                status: "requested",
-                data: user,
-            });
-        if (user.isVendorVerified === "pending")
-            return res.status(400).json({
-                success: false,
-                message: "Vendor is pending for verification.",
-                status: "pending",
-                data: user,
-            });
-        if (user.isVendorVerified === "rejected")
-            return res.status(400).json({
-                success: false,
-                message: "Vendor is rejected for verification.",
-                status: "rejected",
-                reason: user.vendorRejectionReason,
-                data: user,
-            });
-        if (!user)
-            return res
-                .status(400)
-                .json({ success: false, message: "Vendor not Exists." });
-        const isMatch = await getComparePassword(user, password);
-        if (!isMatch)
-            return res
-                .status(400)
-                .json({ success: false, message: "Invalid credentials" });
-        if (!user.otpdetails.isVerified)
-            return res.status(401).json({
-                success: false,
-                message: "Please verify your account",
-            });
-        const token = await getToken(user);
-        user.token = token;
-        await user.save();
-        res.cookie("token", token, {
-            httpOnly: false,
-            path: "/",
-            secure: false, // HTTPS par kaam karega
-            sameSite: "Strict",
-            maxAge: 24 * 60 * 60 * 1000, // 1 din tak valid rahega
-        });
-        req.user = user;
-        res.status(200).json({
-            success: true,
-            message: "Login successful",
-            token,
-        });
-    } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
-    }
+  const { email, password } = req.body;
+
+  if (!email || !password)
+    return res.status(400).json({ success: false, message: "All fields are required." });
+
+  try {
+    const user = await UserModel.findOne({ email });
+    if (!user)
+      return res.status(400).json({ success: false, message: "User does not exist." });
+
+    if (user.isBlocked)
+      return res.status(403).json({
+        success: false,
+        message: "User is blocked. Contact support.",
+      });
+
+    const isMatch = await getComparePassword(user, password);
+    if (!isMatch)
+      return res.status(400).json({ success: false, message: "Invalid credentials" });
+
+    if (!user.otpdetails.isVerified)
+      return res.status(401).json({
+        success: false,
+        message: "Please verify your account using OTP.",
+      });
+
+    const token = await getToken(user);
+    user.token = token;
+    await user.save();
+
+    res.cookie("token", token, {
+      httpOnly: false,
+      path: "/",
+      secure: false, 
+      sameSite: "Strict",
+      maxAge: 24 * 60 * 60 * 1000, 
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Login successful",
+      token,
+      data: {
+        name: user.name,
+        email: user.email,
+        mobile: user.mobile,
+        username: user.username,
+        isFirstPurchase: user.isFirstPurchase,
+        createdAt: user.createdAt,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
 };
+
 
 exports.UserLogout = async (req, res) => {
     try {
@@ -410,7 +400,7 @@ exports.PasswordForgot = async (req, res) => {
         user.otpdetails.otp = otp;
         user.$assertPopulatedotpdetails.expireOtp = expireOtp;
         await user.save();
-        sendToOtp({ otp, user, subject: "Bionova Password Forgot OTP." });
+        sendToOtp({ otp, user, subject: "Royal-FX Password Forgot OTP." });
 
         return res
             .status(200)
