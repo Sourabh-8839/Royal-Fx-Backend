@@ -2,6 +2,8 @@ const user = require('../models/admin.model');
 const jwt = require('jsonwebtoken');
 const { sendEmail } = require('../utils/email');
 const { getComparePassword, getHashPassword } = require('../utils/encrypt');
+const Plan = require('../models/plan.model');
+const royalityModel = require('../models/royality.model');
 
 
 exports.loginAdmin = async (req, res, next) => {
@@ -194,3 +196,58 @@ exports.resetPassword = async (req, res) => {
 //     res.status(500).json({ message: error.message });
 //   }
 // }
+
+
+
+exports.createPlan = async (req, res) => {
+  try {
+    const { name} = req.body;
+
+    if (!name) {
+      return res.status(400).json({ message: 'Plan name is required' });
+    }
+
+    // Check if plan already exists
+    const existingPlan = await Plan.findOne({ name });
+    if (existingPlan) {
+      return res.status(409).json({ message: 'Plan with this name already exists' });
+    }
+
+    // Create new plan
+    const newPlan = new Plan({
+      name,
+    });
+
+    await newPlan.save();
+
+    res.status(201).json({ message: 'Plan created successfully', plan: newPlan });
+  } catch (error) {
+    console.error('Error creating plan:', error);
+    res.status(500).json({ message: error.message });
+  }
+}
+
+exports.createRoyalty = async (req, res) => {
+  try {
+    const { name, percentage,totalRoyalty,matchingBV } = req.body;
+
+    if (!name || !totalRoyalty) {
+      return res.status(400).json({ message: 'Name and total investment are required' });
+    }
+
+    // Create new royalty
+    const newRoyalty = new royalityModel({
+      name,
+      totalRoyalty,
+      matchingBV,
+      percentage
+    });
+
+    await newRoyalty.save();
+
+    res.status(201).json({ message: 'Royalty created successfully', royalty: newRoyalty });
+  } catch (error) {
+    console.error('Error creating royalty:', error);
+    res.status(500).json({ message: error.message });
+  }
+}

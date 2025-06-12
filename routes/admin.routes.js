@@ -11,11 +11,15 @@ router.post('/create-admin', adminController.createAdmin);
 router.post('/forgot-password', adminController.forgotPassword);
 router.post('/reset-password', adminController.resetPassword);
 router.get('/logout', adminController.logoutAdmin);
+router.post('/create-plan', adminController.createPlan);
+router.post('/create-royalty', adminController.createRoyalty);
 
 // Apply authentication middleware to routes that require authentication
 router.use(checkAdminLoggedIn);
 
 router.get('/get-admin', checkAdminLoggedIn, adminController.getAdmin);
+
+
 
 // router.get('/get-members', checkAdminLoggedIn, adminController.getMembers);
 

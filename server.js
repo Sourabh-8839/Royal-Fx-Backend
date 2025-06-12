@@ -10,6 +10,7 @@ const errorHandler = require('./middleware/errorHandler');
 const logger = require('./config/logger');
 const helmet = require('helmet');
 const morgan = require('morgan');
+const os = require('os');
 
 // Routes
 const adminRoutes = require('./routes/admin.routes');
@@ -71,10 +72,26 @@ app.use("/api/user", userRoutes);
 // Error handling
 app.use(errorHandler);
 
+
+const getLocalIP = () => {
+    const interfaces = os.networkInterfaces();
+    for (const interfaceName in interfaces) {
+        for (const iface of interfaces[interfaceName]) {
+            if (!iface.internal && iface.family === 'IPv4') {
+                return iface.address;
+            }
+        }
+    }
+    return '127.0.0.1';
+};
+
 // Start server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-    logger.info(`Server running on port ${PORT}`);
+     const ip = getLocalIP();
+    console.log(`Server running on port ${PORT}`);
+    console.log(`   🌐  Local:   http://localhost:${PORT}`);
+    console.log(`   🖥️  Network: http://${ip}:${PORT}`);
 });
 
 // Handle unhandled rejections

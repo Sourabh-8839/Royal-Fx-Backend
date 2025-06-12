@@ -33,4 +33,6 @@ router.post('/fill-vendor-details/:id/update', UserController.fillVendorDetails)
 router.get('/get-all-users', UserController.getAllUsers)
 router.get('/get-user-details/:id', UserController.getUserDetails)
 
+
+
 module.exports = router;
