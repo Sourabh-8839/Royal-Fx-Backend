@@ -33,6 +33,8 @@ router.post('/fill-vendor-details/:id/update', UserController.fillVendorDetails)
 router.get('/get-all-users', UserController.getAllUsers)
 router.get('/get-user-details/:id', UserController.getUserDetails)
 
+router.post('/deposit-amount', authenticateUser, UserController.deposit);
+
 
 
 module.exports = router;

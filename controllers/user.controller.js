@@ -8,6 +8,7 @@ const {
     generateRandomReferralLink,
 } = require("../utils/generateRandomReferralLink");
 const randomUser = require("../utils/username");
+const { TransactionModel } = require("../models/transaction.model");
 
 exports.UserRegister = async (req, res) => {
   try {
@@ -698,3 +699,33 @@ exports.getUserDetails = async (req, res) => {
         return res.status(401).json({ success: false, message: error.message });
     }
 };
+
+exports.deposit = async (req, res) => {
+    try {
+        const user = req.user;
+        const { amount, txResponse, recipientAddress, userAddress } = req.body;
+
+        if (!amount) return res.status(400).json({ success: false, message: "Amount is required." });
+        if (amount < 0) return res.status(400).json({ success: false, message: "Invalid amount." });
+
+        const txnId = generateTxnId();
+        const transaction = await TransactionModel.create({
+            userId: user._id,
+            amount: Number(amount),
+            clientAddress: userAddress,
+            mainAddress: recipientAddress,
+            hash: txResponse.hash,
+            transactionID: txnId,
+            type: "deposit"
+        })
+
+        user.account.walletAddress += Number(amount);
+        user.transaction.push(transaction._id);
+        // user.walletAddress = userAddress;
+        await user.save();
+        return res.status(200).json({ success: true, message: "Deposit successful." });
+    } catch (error) {
+        console.log("Error depositing:", error);
+        return res.status(500).json({ success: false, message: error.message });
+    }
+}

@@ -25,7 +25,11 @@ const userSchema = new mongoose.Schema({
     },
     isBlocked: { type: Boolean, default: false },
     isFirstPurchase : {type : Boolean , default : false} , 
-    selfBV : {type : Number , default : 0}
+    selfBV : {type : Number , default : 0},
+    transaction:{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Transaction'  
+    }
 }, { timestamps: true, versionKey: false });
 
 // // // Exclude the password field by default when converting documents to JSON or objects
