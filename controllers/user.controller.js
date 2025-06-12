@@ -9,7 +9,7 @@ const {
 } = require("../utils/generateRandomReferralLink");
 const randomUser = require("../utils/username");
 const { TransactionModel } = require("../models/transaction.model");
-
+const Plan  = require("../models/plan.model")
 exports.UserRegister = async (req, res) => {
   try {
     const { name, email, mobile, password, referralCode } = req.body;
@@ -184,17 +184,16 @@ exports.UserOTPVerify = async (req, res) => {
 };
 
 
-exports.UserProfile = async (req, res) => {
+exports.UserProfile = async(req, res) => {
+    const userId = req.user._id
     try {
-        const user = await UserModel.findById(req.user._id);
-        res.status(200).json({
-            success: true,
-            message: "User Profile.",
-            data: user,
-        });
+        let data = await UserModel.findById(userId)
+        res.status(200).json({message:"Data fetched successfully"  , data : data , status:true})
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        res.status(500).json({message:"Internal server error"  , error , status:false})
+        
     }
+    
 };
 
 exports.UserChangePassword = async (req, res) => {
@@ -727,5 +726,15 @@ exports.deposit = async (req, res) => {
     } catch (error) {
         console.log("Error depositing:", error);
         return res.status(500).json({ success: false, message: error.message });
+    }
+}
+
+exports.getPlans = async(req , res)=>{
+    try {
+        let data = await Plan.find({})
+        res.status(200).json({message:"Plans fetched successfully" ,data : data , status : true })
+    } catch (error) {
+        res.status(500).json({message:"internal server error" ,error , status : false })
+        
     }
 }

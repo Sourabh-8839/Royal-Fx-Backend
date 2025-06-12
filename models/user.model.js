@@ -16,6 +16,15 @@ const userSchema = new mongoose.Schema({
      type : mongoose.Schema.Types.ObjectId,
      ref : "Userdetail"
     }],
+    wallet : {
+        incomeWallet : {type : Number , default : 0},
+        topupWallet : {type : Number , default : 0} ,
+        depositWallet : {type : Number , default : 0}
+    },
+    plan :{
+        type : mongoose.Schema.Types.ObjectId,
+        ref : "Plan"
+    },
     royalty : {type : mongoose.Schema.Types.ObjectId , ref : "Royalty"},
     referredBy : {type : mongoose.Schema.Types.ObjectId , ref : "Userdetail"},
     otpdetails: {

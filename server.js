@@ -97,6 +97,7 @@ app.listen(PORT, () => {
 // Handle unhandled rejections
 process.on('unhandledRejection', (err) => {
     logger.error('UNHANDLED REJECTION! 💥 Shutting down...');
-    logger.error(err.name, err.message);
+    logger.error(`${err.name}: ${err.message}\n${err.stack}`);
     process.exit(1);
 });
+;

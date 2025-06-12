@@ -1,5 +1,6 @@
 const router = require('express').Router();
 
+const  levelIncomeDistribution  = require('../controllers/levelIncomeDistribution');
 const UserController = require('../controllers/user.controller');
 const { authenticateUser } = require('../middleware/user.middleware');
 const { UserModel } = require('../models/user.model');
@@ -35,6 +36,11 @@ router.get('/get-user-details/:id', UserController.getUserDetails)
 
 router.post('/deposit-amount', authenticateUser, UserController.deposit);
 
+
+//---------------------GET PLANS--------------------------
+router.get("/get-plans" , UserController.getPlans)
+//----------------------GET LEVEL INCOME HISTORY---------------
+router.get("/get-level-history" , authenticateUser , levelIncomeDistribution.getMyLevelHistory)
 
 
 module.exports = router;
