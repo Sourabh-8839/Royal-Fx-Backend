@@ -6,7 +6,7 @@ const levelPercentages = [0.20, 0.05, 0.03, 0.02, 0.01];
 
 exports.levelIncomeDistribution = async (req, res) => {
   try {
-    const { userId, planId } = req.body;
+    const { userId} = req.body;
 
     const buyer = await UserModel.findById(userId);
     if (!buyer)
@@ -19,9 +19,14 @@ exports.levelIncomeDistribution = async (req, res) => {
       });
     }
 
-    const plan = await PlanModel.findById(planId);
-    if (!plan)
-      return res.status(404).json({ success: false, message: "Plan not found" });
+    if (!buyer.firstPurchaseAmount || buyer.firstPurchaseAmount <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid or missing firstPurchaseAmount.",
+      });
+    }
+
+    const purchaseAmount = buyer.firstPurchaseAmount;
 
     let currentUpline = buyer.referredBy;
     let level = 0;
@@ -30,7 +35,6 @@ exports.levelIncomeDistribution = async (req, res) => {
       const uplineUser = await UserModel.findById(currentUpline);
       if (!uplineUser) break;
 
-      // Get the plan of the upline user
       const uplinePlan = await PlanModel.findById(uplineUser.currentPlan);
       if (!uplinePlan) {
         currentUpline = uplineUser.referredBy;
@@ -40,32 +44,29 @@ exports.levelIncomeDistribution = async (req, res) => {
 
       const maxIncomeLimit = uplinePlan.price * 5;
 
-      // Calculate total level income already received
       const previousIncome = await IncomeHistoryModel.aggregate([
         { $match: { receiver: uplineUser._id } },
         { $group: { _id: null, total: { $sum: "$amount" } } }
       ]);
-
       const totalReceived = previousIncome.length > 0 ? previousIncome[0].total : 0;
 
-      const incomeAmount = plan.price * levelPercentages[level];
+      const incomeAmount = purchaseAmount * levelPercentages[level];
 
-      // If already at or above cap, skip
+
       if (totalReceived >= maxIncomeLimit) {
         currentUpline = uplineUser.referredBy;
         level++;
         continue;
       }
 
-      // Calculate allowed income
       const allowedIncome = Math.min(incomeAmount, maxIncomeLimit - totalReceived);
 
-      // Update wallet
+
       if (!uplineUser.wallet) uplineUser.wallet = {};
       uplineUser.wallet.incomeWallet = (uplineUser.wallet.incomeWallet || 0) + allowedIncome;
       await uplineUser.save();
 
-      // Save in IncomeHistory
+     
       await IncomeHistoryModel.create({
         receiver: uplineUser._id,
         fromUser: buyer._id,
@@ -78,13 +79,13 @@ exports.levelIncomeDistribution = async (req, res) => {
       level++;
     }
 
-    // Mark first purchase as done
+   
     buyer.isFirstPurchase = true;
     await buyer.save();
 
     return res.status(200).json({
       success: true,
-      message: "Level income distributed with cap logic.",
+      message: "Level income distributed based on firstPurchaseAmount.",
     });
 
   } catch (err) {
@@ -92,6 +93,7 @@ exports.levelIncomeDistribution = async (req, res) => {
     return res.status(500).json({ success: false, message: "Server error" });
   }
 };
+
 
 
 exports.getMyLevelHistory = async (req, res) => {

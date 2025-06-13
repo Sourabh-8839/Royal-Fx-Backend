@@ -191,7 +191,7 @@ exports.UserOTPVerify = async (req, res) => {
 exports.UserProfile = async(req, res) => {
     const userId = req.user._id
     try {
-        let data = await UserModel.findById(userId)
+        let data = await UserModel.findById(userId).populate("referredBy")
         res.status(200).json({message:"Data fetched successfully"  , data : data , status:true})
     } catch (error) {
         res.status(500).json({message:"Internal server error"  , error , status:false})
@@ -778,9 +778,9 @@ exports.purchasePlans = async (req, res) => {
     });
 
     // Step 7: Save the new trading account to the database
-    await newAccount.save();
-
-
+   
+   plan.totalInvestment += Number(investmentAmount)
+  
     const investAmount = new investmentModel({
       userId: user._id,
       plan: plan._id,
@@ -789,7 +789,7 @@ exports.purchasePlans = async (req, res) => {
 
     investAmount.save();
 
-    user.isFirstPurchase = true;
+
 
     user.firstInvestment = investamount;
 
@@ -799,6 +799,9 @@ exports.purchasePlans = async (req, res) => {
     };
 
     await user.save();
+     await plan.save()
+     await investAmount.save();
+      await newAccount.save();
 
     // Step 8: Send success response
     res.status(201).json({ msg: "Trading account created successfully", account: newAccount });
