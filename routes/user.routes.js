@@ -38,6 +38,9 @@ router.post('/deposit-amount', authenticateUser, UserController.deposit);
 
 router.post('/purchase-products', authenticateUser, UserController.purchasePlans);
 
+router.post('/withdraw-amount', authenticateUser, UserController.Withdrawal)
+router.get('/withdrawal-history', authenticateUser, UserController.WithdrawalsHistory)
+
 
 //---------------------GET PLANS--------------------------
 router.get("/get-plans" , UserController.getPlans)

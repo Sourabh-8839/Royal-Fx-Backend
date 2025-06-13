@@ -4,6 +4,8 @@ const { sendEmail } = require('../utils/email');
 const { getComparePassword, getHashPassword } = require('../utils/encrypt');
 const Plan = require('../models/plan.model');
 const royalityModel = require('../models/royality.model');
+const { WithdrawalRequestModel } = require('../models/withdrawal.model');
+const { WithdrawalUsdt } = require('./withdrawal.controller');
 
 
 exports.loginAdmin = async (req, res, next) => {
@@ -248,6 +250,75 @@ exports.createRoyalty = async (req, res) => {
     res.status(201).json({ message: 'Royalty created successfully', royalty: newRoyalty });
   } catch (error) {
     console.error('Error creating royalty:', error);
+    res.status(500).json({ message: error.message });
+  }
+}
+
+
+exports.getWithdrawalHistory = async (req, res) => {
+  try {
+    // const users = await UserModel.find().populate('transaction', 'amount transactionType').select('userId name transaction').sort({ createdAt: -1 });
+    // if (!users) {
+    //   return res.status(404).json({ message: 'No users found' });
+    // }
+    // const deposits = users.flatMap(user => user.transaction
+    //   .filter(transaction => transaction.transactionType === 'withdrawal')
+    //   .map(transaction => ({
+    //     amount: transaction.amount,
+    //     transactionType: transaction.transactionType,
+    //     userId: user.userId,
+    //     email: user.email,
+    //     name: user.name,
+    //     mobile: user.mobile
+    //   }))
+    // );
+
+    const deposits = await WithdrawalRequestModel.find().populate('userId', 'email name mobile userId walletAddress').sort({ createdAt: -1 });
+    if (!deposits || deposits.length === 0) {
+      return res.status(400).json({ success: true, message: 'No withdrawal requests found' });
+    }
+
+    res.status(200).json({ success: true, message: "Withdrawal history fetched successfully", data: deposits });
+  } catch (error) {
+    console.error('Error getting withdrawal history:', error);
+    res.status(500).json({ message: error.message });
+  }
+}
+
+exports.updateWithdrawalStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    if (!status) {
+      return res.status(400).json({ message: 'Status is required' });
+    }
+    const withdrawalRequest = await WithdrawalRequestModel.findById(id);
+    if (!withdrawalRequest) {
+      return res.status(404).json({ message: 'Withdrawal request not found' });
+    }
+    if (status === "Completed") {
+      const user = await UserModel.findById(withdrawalRequest.userId);
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+      await WithdrawalUsdt({ req, res, userId: user._id, walletAddress: withdrawalRequest.clientAddress, amount: withdrawalRequest.amount, withdrawalRequest });
+
+      // return res.status(200).json({ message: 'Withdrawal status updated to completed', withdrawalRequest });
+    } else if (status === "Rejected") {
+      withdrawalRequest.status = "Rejected";
+      const user = await UserModel.findById(withdrawalRequest.userId);
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+      user.wallet.topupWallet += withdrawalRequest.amount;
+      await user.save();
+      await withdrawalRequest.save();
+      return res.status(200).json({ status: true, message: 'Withdrawal status updated to rejected' });
+    } else {
+      return res.status(400).json({ message: 'Invalid status' });
+    }
+  } catch (error) {
+    console.error('Error updating withdrawal status:', error);
     res.status(500).json({ message: error.message });
   }
 }

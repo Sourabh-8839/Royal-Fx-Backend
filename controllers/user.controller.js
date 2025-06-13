@@ -13,6 +13,8 @@ const randomUser = require("../utils/username");
 const { TransactionModel } = require("../models/transaction.model");
 const TradingAccount = require("../models/tradingAccount.model");
 const investmentModel = require("../models/investment.model");
+const { WithdrawalRequestModel } = require("../models/withdrawal.model");
+const royalityModel = require("../models/royality.model");
 
 exports.UserRegister = async (req, res) => {
   try {
@@ -752,22 +754,36 @@ exports.purchasePlans = async (req, res) => {
       planId,
     } = req.body;
 
-
-    if ( !tradingAcc|| !mainPassword || !tradingPlatform || !serverName || !firstName || !lastName || !email || !password) {
+    if (
+      !tradingAcc || !mainPassword || !tradingPlatform || !serverName ||
+      !firstName || !lastName || !email || !password
+    ) {
       return res.status(400).json({ msg: "All fields are required" });
     }
 
-    // Step 3: Check if the plan exists
+    // Step 2: Check if the plan exists
     const plan = await Plan.findById(planId);
     if (!plan) {
       return res.status(400).json({ msg: "Plan not found" });
     }
 
+    // Step 3: Check if the user has sufficient balance in their top-up wallet
+    if (user.topupWallet < investmentAmount) {
+      return res.status(400).json({ msg: "Insufficient funds in your top-up wallet" });
+    }
 
-    // Step 6: Create a new trading account
+    // Step 4: Deduct funds from the top-up wallet
+    user.topupWallet -= investmentAmount; // Deduct the investment amount from the wallet
+
+
+    plan.totalInvestment += investmentAmount;
+    
+    plan.brokerageCharge += investmentAmount * 0.20  //Update the plan's brokerage charge based on the investment amount
+    // Update the plan's total investment
+    // Step 5: Create a new trading account
     const newAccount = new TradingAccount({
-      userId:user._id,
-      planId:plan._id,
+      userId: user._id,
+      planId: plan._id,
       tradingAcc,
       mainPassword,
       tradingPlatform,
@@ -775,9 +791,31 @@ exports.purchasePlans = async (req, res) => {
       firstName,
       lastName,
       email,
-      password// Storing hashed password for security
+      password, // Storing password directly (hash it for security in real use)
     });
 
+    // Step 6: Save the new trading account to the database
+    await newAccount.save();
+
+    // Step 7: Convert investment amount to BV
+    const investmentInBV = investmentAmount / 100; // 1 BV = 100 USDT
+
+
+const royaltyTiers = ['Silver', 'Gold', 'Diamond'];
+
+for (let tier of royaltyTiers) {
+  const existingRoyalty = await royalityModel.findOne({ name: tier });
+
+  if (existingRoyalty) {
+    // Update the royalty amounts for the existing tier
+
+    const royaltyAmount = investmentAmount * (existingRoyalty.percentage / 100);
+    existingRoyalty.totalRoyalty += royaltyAmount;
+    await existingRoyalty.save();
+  }
+}
+
+    // Step 8: Save the investment amount in the investment model
     // Step 7: Save the new trading account to the database
    
    plan.totalInvestment += Number(investmentAmount)
@@ -787,7 +825,16 @@ exports.purchasePlans = async (req, res) => {
       plan: plan._id,
       investAmount: investmentAmount, // Amount invested by the user
     });
+    await investAmount.save();
 
+    // Step 9: Update the user's selfBV and rewardBV
+    user.isFirstPurchase = true;
+    user.selfBV = (user.selfBV || 0) + investmentInBV;  // Add the investment BV to selfBV
+    user.rewardBV = (user.rewardBV || 0) + investmentInBV;
+  
+    // Add the investment BV to rewardBV
+    user.firstInvestment = investmentAmount;
+    user.activationdetails = {
     investAmount.save();
 
 
@@ -799,18 +846,23 @@ exports.purchasePlans = async (req, res) => {
       activeDate: new Date(),
     };
 
+
+
+    // Save the updated user
     await user.save();
+    await plan.save(); // Save the updated plan with the new total investment
      await plan.save()
      await investAmount.save();
       await newAccount.save();
 
-    // Step 8: Send success response
-    res.status(201).json({ msg: "Trading account created successfully", account: newAccount });
+    // Step 10: Send success response
+    res.status(201).json({ message: "Trading account created successfully", account: newAccount });
   } catch (error) {
     console.error(error);
     res.status(500).json({ msg: "Server error" });
   }
 };
+
 
 exports.getPlans = async(req , res)=>{
     try {
@@ -820,4 +872,99 @@ exports.getPlans = async(req , res)=>{
         res.status(500).json({message:"internal server error" ,error , status : false })
         
     }
+}
+
+
+
+exports.Withdrawal = async (req, res) => {
+    try {
+        const { amount, walletAddress } = req.body;
+        console.log(amount, walletAddress)
+
+        if (!amount || !walletAddress) return res.status(400).json({ success: false, withdrawalPermission: "Rejected", message: "Amount & Wallet Address are required." });
+        const user = await UserModel.findById(req.user._id).populate({ path: 'withdrawal', select: 'amount createdAt walletAddress' });
+        if (!user) return res.status(404).json({ success: false, message: "User not exists." });
+        if (amount > user.wallet.incomeWallet) return res.status(400).json({ success: false, message: "Insufficient funds." });
+
+        // if (amount < admin.min || amount > admin.max) {
+        //     return res.status(400).json({ success: false, message: "Amount is outside the minimum and maximum withdrawal limit." });
+        // }
+        const txnId = generateTxnId();
+        const newWithdrawal = new WithdrawalRequestModel({
+            userId: user._id,
+            value: amount,
+            type: "USDT_Withdrawal",
+            clientAddress: walletAddress,
+            amount: amount,
+            status: "Pending",
+            transactionId: txnId
+        });
+
+        user.wallet.incomeWallet -= amount;
+        user.withdrawal.push(newWithdrawal);
+        await user.save();
+        await newWithdrawal.save();
+
+        res.status(200).json({ success: true, message: "Withdrawal request created successfully.", data: newWithdrawal });
+
+        // await WithdrawalUsdt({ req, res, userId: user._id, walletAddress, amount });
+        
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+}
+
+
+exports.WithdrawalsHistory = async (req, res) => {
+    try {
+        const user = await UserModel.findById(req.user._id, { withdrawal: 1, username: 1, investment: 1 }).populate({ path: 'withdrawal' });
+        const history = user.withdrawal;
+        const totalAmount = history.reduce((total, w) => total + w.amount, 0);
+        const today = new Date();
+        const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0);
+        const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59);
+        const todayAmount = history.filter(w => new Date(w.createdAt) >= startOfDay && new Date(w.createdAt) <= endOfDay)
+            .reduce((total, w) => total + w.amount, 0);
+        return res.status(200).json({ success: true, data: { history, totalAmount, todayAmount }, message: "Withdrawal finds successfully. " });
+    } catch (error) {
+        console.error("Error fetching total withdrawal:", error);
+        return res.status(500).json({ success: false, message: error.message });
+    }
+}
+
+exports.transferFunds = async (req, res) => {
+
+    const user = req.user;
+    const { fromWallet, toWallet, amount } = req.body;
+
+    try {   
+          if (!fromWallet || !toWallet) return res.status(400).json({ success: false, message: "Both from and to are required." });
+        if (!from.value || !to.value || from.value <= 0 || to.value < 0) return res.status(400).json({ success: false, message: "Invalid amount." });
+
+        if(amount>user.wallet[fromWallet]) {
+            return res.status(400).json({ success: false, message: `Insufficient Funds` });
+        }
+
+
+        user.account.currentIncome -= to.value;
+        user.usdt += to.value;
+        user.swapingHistory.push({
+            swapId: swapp._id,
+            initialAmount: initialValue,
+            currentAmount: initialValue,
+            status: "SWAP"
+        });
+
+         await user.save();
+
+         return res.status(200).json({ success: true, message: "Swap successful." });
+
+    }
+    catch (error) {
+        console.log("Error swapping:", error);
+        return res.status(500).json({ success: false, message: error.message });
+    }
+
+
 }

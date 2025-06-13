@@ -5,6 +5,7 @@ const { Schema } = mongoose;
 const planSchema = new Schema({
   name: { type: String, required: true },
   totalInvestment:{type:Number,default:0}, // Plan ka naam
+  brokerageCharge: { type: Number, default: 0 }, // Brokerage charge for the plan
   // isActive: { type: Boolean, default: true }, // Whether the plan is active or not
 });
 
