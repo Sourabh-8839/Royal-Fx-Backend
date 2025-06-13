@@ -43,12 +43,12 @@ const userSchema = new mongoose.Schema(
                 default: false,
             },
         },
-        rank :{
-            type : String,
-            default : null
+        rank: {
+            type: String,
+            default: null
         },
         royalty: { type: mongoose.Schema.Types.ObjectId, ref: "Royalty" },
-        referredBy: { type: mongoose.Schema.Types.ObjectId, ref: "Userdetail" , default : null },
+        referredBy: { type: mongoose.Schema.Types.ObjectId, ref: "Userdetail", default: null },
         otpdetails: {
             isVerified: { type: Boolean, default: false },
             otp: { type: String, default: null },
@@ -61,16 +61,16 @@ const userSchema = new mongoose.Schema(
             type: mongoose.Schema.Types.ObjectId,
             ref: "Transaction",
         },
-        rewardBV:{
+        rewardBV: {
             type: Number,
             default: 0
         },
-        royaltyBV :{
+        royaltyBV: {
             type: Number,
             default: 0
         },
         bvRewardsGiven: {
-            type: [Number], 
+            type: [Number],
             default: [],
 },
     firstInvestment: {
@@ -80,9 +80,17 @@ const userSchema = new mongoose.Schema(
 rewardLevel : {
     type : String,
     default : null  
-}
-  },
-{ timestamps: true, versionKey: false }
+},
+        totalEarnings: {
+            type: Number,
+            default: 0
+        },
+        firstInvestment: {
+            type: Number,
+            default: 0,
+        },
+    },
+    { timestamps: true, versionKey: false }
 );
 
 // // // Exclude the password field by default when converting documents to JSON or objects

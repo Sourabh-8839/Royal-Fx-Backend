@@ -40,6 +40,7 @@ exports.distributeLevelIncome = async (userId) => {
 
       uplineUser.wallet.incomeWallet = (uplineUser.wallet.incomeWallet || 0) + allowedIncome;
       uplineUser.totalEarningLimit = totalReceived + allowedIncome;
+   uplineUser.totalEarning = (uplineUser.totalEarning || 0) + allowedIncome;
       await uplineUser.save();
 
       await IncomeHistoryModel.create({
