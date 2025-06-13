@@ -3,15 +3,16 @@ const { Schema } = mongoose;
 
 // Define Plan Schema
 const royaltySchema = new Schema({
+  name: { type: String, required: true }, 
+  percentage: { type: Number, required: true }, 
   name: { type: String, 
     required: true,
   enum:['Silver','Gold','Diamond'] }, // Royalty ka naam (e.g., Basic Royalty)
   percentage: { type: Number, required: true }, // Royalty percentage
   totalRoyalty: { type: Number, default: 0 },
-  matchingBV:{type:Number,required:true} // Total royalty amount
+  matchingBV:{type:Number,required:true} 
 });
 
-// Model
 module.exports = mongoose.model('Royalty', royaltySchema);
 
 

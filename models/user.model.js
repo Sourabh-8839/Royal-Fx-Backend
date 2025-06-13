@@ -59,6 +59,10 @@ const userSchema = new mongoose.Schema(
             type: Number,
             default: 0
         },
+        royaltyBV :{
+            type: Number,
+            default: 0
+        },
         bvRewardsGiven: {
             type: [Number], 
             default: [],

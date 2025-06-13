@@ -199,7 +199,8 @@ exports.calculateMatchingBV = async (userId) => {
 
   const matchingBV = Math.min(highestBV, sumOfOthers);
 
-  user.rewardBV = matchingBV;
+  user.rewardBV += matchingBV;
+  user.royaltyBV += matchingBV
   await user.save();
 
   return matchingBV;
@@ -261,7 +262,7 @@ exports.BVRewards = async (req, res) => {
 
     user.rewardBV = availableBV;
     user.bvRewardsGiven = alreadyRewarded;
-
+    
     await user.save();
 
     return res.status(200).json({
