@@ -723,7 +723,7 @@ exports.deposit = async (req, res) => {
             type: "deposit"
         })
 
-        user.account.walletAddress += Number(amount);
+        user.wallet.depositWallet += Number(amount);
         user.transaction.push(transaction._id);
         // user.walletAddress = userAddress;
         await user.save();
@@ -790,10 +790,9 @@ exports.purchasePlans = async (req, res) => {
 
     investAmount.save();
 
-
     user.isFirstPurchase = true;
 
-    user.firstPurchaseAmount = investamount;
+    user.firstInvestment = investamount;
 
     user.activationdetails= {
       isActive: true,

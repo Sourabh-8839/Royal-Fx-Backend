@@ -1,17 +1,27 @@
-const mongoose = require("mongoose");
-// buy package
 const transactionSchema = new mongoose.Schema({
-    userId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Userdetail',
-        required: true
-    },
-    amount: {
-        type: Number,
-        required: true,
-        default: 0.0
-    },
-    clientAddress: {
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
+  type: {
+    type: String,
+    enum: ['deposit', 'topup', 'investment', 'profit', 'withdrawal'],
+    required: true
+  },
+  amount: {
+    type: Number,
+    required: true
+  },
+  fromWallet: {
+    type: String,
+    enum: ['deposit', 'topup', 'income']
+  },
+  toWallet: {
+    type: String,
+    enum: ['deposit', 'topup', 'income']
+  },
+   clientAddress: {
         type: String,
         default: null
     },
@@ -28,16 +38,17 @@ const transactionSchema = new mongoose.Schema({
         default: null,
         unique: true
     },
-    status: {
-        type: String,
-        enum: ['Pending', 'Completed', 'Failed'],
-        default: 'Completed'
-    },
-    type: {
-        type: String,
-        enum: ['deposit', 'withdrawal' ],
-        default: 'deposit'
-    }
-}, { timestamps: true, versionKey: false });
 
-exports.TransactionModel = mongoose.model('Transaction', transactionSchema);
+  referenceId: {
+    type: mongoose.Schema.Types.ObjectId // Investment ID or other reference
+  },
+  status: {
+    type: String,
+    enum: ['pending', 'completed', 'failed'],
+    default: 'completed'
+  }
+}, {
+  timestamps: true
+});
+
+module.exports = mongoose.model('Transaction', transactionSchema);

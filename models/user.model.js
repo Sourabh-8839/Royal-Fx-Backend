@@ -1,46 +1,63 @@
-const mongoose = require("mongoose")
+const mongoose = require("mongoose");
 
-const userSchema = new mongoose.Schema({
+const userSchema = new mongoose.Schema(
+  {
     name: { type: String, default: null },
     email: {
-        type: String, default: null
+      type: String,
+      default: null,
     },
     mobile: { type: String, default: null },
     password: { type: String, default: null },
     activationdetails: {
-        isActive: { type: Boolean, default: false },
-        activeDate: { type: Date, default: null }
+      isActive: { type: Boolean, default: false },
+      activeDate: { type: Date, default: null },
     },
-    username : {type : String , default : null},
-    partners : [{
-     type : mongoose.Schema.Types.ObjectId,
-     ref : "Userdetail"
-    }],
-    wallet : {
-        incomeWallet : {type : Number , default : 0},
-        topupWallet : {type : Number , default : 0} ,
-        depositWallet : {type : Number , default : 0}
+    username: { type: String, default: null },
+    partners: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Userdetail",
+      },
+    ],
+    wallet: {
+      incomeWallet: { type: Number, default: 0 },
+      topupWallet: { type: Number, default: 0 },
+      depositWallet: { type: Number, default: 0 },
     },
-    plan :{
-        type : mongoose.Schema.Types.ObjectId,
-        ref : "Plan"
+    currentEarnings: {
+      type: Number,
+      default: 0,
     },
-    royalty : {type : mongoose.Schema.Types.ObjectId , ref : "Royalty"},
-    referredBy : {type : mongoose.Schema.Types.ObjectId , ref : "Userdetail"},
+    totalEarningLimit: {
+      type: Number,
+      default: 0, // 5x of first investment
+    },
+    plan: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Plan",
+    },
+    royalty: { type: mongoose.Schema.Types.ObjectId, ref: "Royalty" },
+    referredBy: { type: mongoose.Schema.Types.ObjectId, ref: "Userdetail" },
     otpdetails: {
-        isVerified: { type: Boolean, default: false },
-        otp: { type: String, default: null },
-        expireOtp: { type: Date, default: null }
+      isVerified: { type: Boolean, default: false },
+      otp: { type: String, default: null },
+      expireOtp: { type: Date, default: null },
     },
     isBlocked: { type: Boolean, default: false },
-    isFirstPurchase : {type : Boolean , default : false} , 
-    selfBV : {type : Number , default : 0},
-    transaction:{
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Transaction'  
+    isFirstPurchase: { type: Boolean, default: false },
+    selfBV: { type: Number, default: 0 },
+    transaction: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Transaction",
     },
-    firstPurchaseAmount: { type: Number, default: 0 },
-}, { timestamps: true, versionKey: false });
+    firstInvestment: {
+      type: Number,
+      default: 0,
+    },
+  },
+  { timestamps: true, versionKey: false }
+);
 
 // // // Exclude the password field by default when converting documents to JSON or objects
 // userSchema.set('toJSON', {
@@ -62,4 +79,4 @@ const userSchema = new mongoose.Schema({
 //     }
 // });
 
-exports.UserModel = mongoose.model('Userdetail', userSchema)
+exports.UserModel = mongoose.model("Userdetail", userSchema);
