@@ -825,7 +825,7 @@ for (let tier of royaltyTiers) {
       plan: plan._id,
       investAmount: investmentAmount, // Amount invested by the user
     });
-    await investAmount.save();
+
 
     // Step 9: Update the user's selfBV and rewardBV
     user.isFirstPurchase = true;
@@ -833,13 +833,12 @@ for (let tier of royaltyTiers) {
     user.rewardBV = (user.rewardBV || 0) + investmentInBV;
   
     // Add the investment BV to rewardBV
+    if (!user.isFirstPurchase) {
     user.firstInvestment = investmentAmount;
-    user.activationdetails = {
+    user.isFirstPurchase = true;
+    }
+    
     investAmount.save();
-
-
-
-    user.firstInvestment = investamount;
 
     user.activationdetails= {
       isActive: true,
@@ -851,16 +850,18 @@ for (let tier of royaltyTiers) {
     // Save the updated user
     await user.save();
     await plan.save(); // Save the updated plan with the new total investment
-     await plan.save()
      await investAmount.save();
       await newAccount.save();
 
     // Step 10: Send success response
     res.status(201).json({ message: "Trading account created successfully", account: newAccount });
-  } catch (error) {
+
+  }
+   catch (error) {
     console.error(error);
     res.status(500).json({ msg: "Server error" });
   }
+  
 };
 
 
