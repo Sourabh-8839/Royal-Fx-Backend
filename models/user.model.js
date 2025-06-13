@@ -20,6 +20,11 @@ const userSchema = new mongoose.Schema(
                 ref: "Userdetail",
             },
         ],
+        matchingBVGiven: {
+            type: Number,
+            default: 0
+        },
+
         wallet: {
             incomeWallet: { type: Number, default: 0 },
             topupWallet: { type: Number, default: 0 },
@@ -35,8 +40,8 @@ const userSchema = new mongoose.Schema(
         },
         plan: {
             planId: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: "Plan",
+                type: mongoose.Schema.Types.ObjectId,
+                ref: "Plan",
             },
             isActive: {
                 type: Boolean,
@@ -57,10 +62,10 @@ const userSchema = new mongoose.Schema(
         isBlocked: { type: Boolean, default: false },
         isFirstPurchase: { type: Boolean, default: false },
         selfBV: { type: Number, default: 0 },
-        transaction: {
+        transaction: [{
             type: mongoose.Schema.Types.ObjectId,
             ref: "Transaction",
-        },
+        }],
         rewardBV: {
             type: Number,
             default: 0
@@ -72,15 +77,15 @@ const userSchema = new mongoose.Schema(
         bvRewardsGiven: {
             type: [Number],
             default: [],
-},
-    firstInvestment: {
-    type: Number,
-    default: 0,
-},
-rewardLevel : {
-    type : String,
-    default : null  
-},
+        },
+        firstInvestment: {
+            type: Number,
+            default: 0,
+        },
+        rewardLevel: {
+            type: String,
+            default: null
+        },
         totalEarnings: {
             type: Number,
             default: 0

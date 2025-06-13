@@ -68,7 +68,7 @@ app.get('/', (req, res) => {
 });
 app.use('/api/admin', adminRoutes);
 app.use("/api/user", userRoutes);
-require("./utils/dailyCron")
+// require("./utils/dailyCron")
 
 // Error handling
 app.use(errorHandler);
