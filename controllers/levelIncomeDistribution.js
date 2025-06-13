@@ -2,21 +2,21 @@ const UserModel = require("../models/user.model");
 const PlanModel = require("../models/plan.model");
 const IncomeHistoryModel = require("../models/levelIncomeHistory.model");
 const BVRewardHistory = require("../models/BVRewardHistory.model")
+
+
 const levelPercentages = [0.20, 0.05, 0.03, 0.02, 0.01];
 
 exports.distributeLevelIncome = async (userId) => {
   try {
     const buyer = await UserModel.findById(userId);
+    console.log(buyer)
     if (!buyer) throw new Error("User not found");
 
     if (buyer.isFirstPurchase === true) {
       throw new Error("Level income already distributed for this user.");
     }
 
-    if (!buyer.firstInvestment || buyer.firstInvestment <= 0) {
-      throw new Error("Invalid or missing firstInvestment.");
-    }
-
+   
     const purchaseAmount = buyer.firstInvestment;
     let currentUpline = buyer.referredBy;
     let level = 0;
@@ -38,7 +38,7 @@ exports.distributeLevelIncome = async (userId) => {
 
       const allowedIncome = Math.min(incomeAmount, maxIncomeLimit - totalReceived);
 
-      uplineUser.wallet.depositWallet = (uplineUser.wallet.depositWallet || 0) + allowedIncome;
+      uplineUser.wallet.incomeWallet = (uplineUser.wallet.incomeWallet || 0) + allowedIncome;
       uplineUser.totalEarningLimit = totalReceived + allowedIncome;
       await uplineUser.save();
 
@@ -54,7 +54,7 @@ exports.distributeLevelIncome = async (userId) => {
       level++;
     }
 
-    // buyer.isFirstPurchase = true;
+    buyer.isFirstPurchase = true;
     await buyer.save();
 
     return {
@@ -102,28 +102,32 @@ exports.updateRank = async () => {
   try {
     const users = await UserModel.find();
 
+    const updatePromises = [];
+
     for (const user of users) {
       const partners = await UserModel.find({ _id: { $in: user.partners } });
+
       if (!partners.length) continue;
 
-      // Find highest selfBV partner
       const sorted = partners.sort((a, b) => b.selfBV - a.selfBV);
       const highestBV = sorted[0].selfBV;
 
-      // Sum of others
       const sumOtherBV = sorted.slice(1).reduce((sum, p) => sum + p.selfBV, 0);
 
       const matchingBV = Math.min(highestBV, sumOtherBV);
 
-      if (matchingBV >= 50) {
+      if (user.rewardBV >= 50 && user.rank !== "Star") {
         user.rank = "Star";
-        await user.save();
       }
+
+      updatePromises.push(user.save());
     }
+
+    await Promise.all(updatePromises);
 
     return {
       success: true,
-      message: "Ranks updated."
+      message: "Ranks updated successfully."
     };
   } catch (err) {
     console.error("Rank Update Error:", err);
@@ -132,7 +136,9 @@ exports.updateRank = async () => {
       message: err.message || "Server error"
     };
   }
-}
+};
+
+
 
 
 
@@ -161,7 +167,7 @@ exports.starIncomeDistribution = async (investorId, investmentAmount) => {
             const reward = investmentAmount * 0.01;
             const allowedReward = Math.min(reward, earningCap - currentEarnings);
 
-            uplineUser.wallet.depositWallet = (uplineUser.wallet.depositWallet || 0) + allowedReward;
+            uplineUser.wallet.incomeWallet = (uplineUser.wallet.incomeWallet || 0) + allowedReward;
             uplineUser.totalEarningLimit = currentEarnings + allowedReward;
             await uplineUser.save();
 
@@ -207,72 +213,83 @@ exports.calculateMatchingBV = async (userId) => {
 };
 
 
-exports.BVRewards = async (req, res) => {
+exports.BVRewards = async () => {
   try {
-    const userId = req.user._id;
-    const user = await UserModel.findById(userId);
-    if (!user) return res.status(404).json({ success: false, message: "User not found" });
+    // Get all users
+    const users = await UserModel.find();
 
-    let availableBV = user.rewardBV || 0;
-    if (availableBV <= 0) {
-      return res.status(200).json({ success: false, message: "No reward BV available" });
-    }
+    const allDistributedRewards = [];
 
-    const requirements = [
-      { matchBV: 25, reward: 100 },
-      { matchBV: 50, reward: 200 },
-      { matchBV: 100, reward: 400 },
-      { matchBV: 250, reward: 1000 },
-      { matchBV: 500, reward: 2000 },
-      { matchBV: 1000, reward: 4000 },
-      { matchBV: 2500, reward: 10000 },
-      { matchBV: 5000, reward: 20000 },
-      { matchBV: 10000, reward: 40000 },
-      { matchBV: 25000, reward: 75000 },
-      { matchBV: 50000, reward: 150000 },
-      { matchBV: 100000, reward: 300000 },
-      { matchBV: 250000, reward: 750000 },
-    ];
+    // Loop through all users
+    for (const user of users) {
+      let availableBV = user.rewardBV || 0;
+      if (availableBV <= 0) continue;  // Skip users with no reward BV
 
-    const alreadyRewarded = user.bvRewardsGiven || [];
+      const requirements = [
+        { matchBV: 25, reward: 100 , rewardLevel : 1 },
+        { matchBV: 50, reward: 200 , rewardLevel : 2},
+        { matchBV: 100, reward: 400 , rewardLevel : 3},
+        { matchBV: 250, reward: 1000 , rewardLevel : 4},
+        { matchBV: 500, reward: 2000 , rewardLevel : 5},
+        { matchBV: 1000, reward: 4000 , rewardLevel : 6},
+        { matchBV: 2500, reward: 10000 , rewardLevel : 7},
+        { matchBV: 5000, reward: 20000, rewardLevel : 8},
+        { matchBV: 10000, reward: 40000 , rewardLevel : 9},
+        { matchBV: 25000, reward: 75000 , rewardLevel : 10},
+        { matchBV: 50000, reward: 150000 , rewardLevel : 11},
+        { matchBV: 100000, reward: 300000 , rewardLevel : 12},
+        { matchBV: 250000, reward: 750000 , rewardLevel : 13},
+      ];
 
-    let distributed = [];
+      const alreadyRewarded = user.bvRewardsGiven || [];
+      let distributed = [];
 
-    for (const req of requirements) {
-      if (availableBV >= req.matchBV && !alreadyRewarded.includes(req.matchBV)) {
-        user.wallet.incomeWallet = (user.wallet.incomeWallet || 0) + req.reward;
+      // Loop through the requirements and distribute the rewards
+      for (const req of requirements) {
+        if (availableBV >= req.matchBV && !alreadyRewarded.includes(req.matchBV)) {
+          user.wallet.incomeWallet = (user.wallet.incomeWallet || 0) + req.reward;
 
-        distributed.push({
-          matchBV: req.matchBV,
-          reward: req.reward,
-        });
+          distributed.push({
+            matchBV: req.matchBV,
+            reward: req.reward,
+          });
 
-        await BVRewardHistory.create({
-          userId: user._id,
-          bv: req.matchBV,
-          amount: req.reward,
-          date: new Date(),
-        });
+          // Log the reward distribution in BVRewardHistory
+          await BVRewardHistory.create({
+            userId: user._id,
+            bv: req.matchBV,
+            amount: req.reward,
+            date: new Date(),
+          });
 
-        availableBV -= req.matchBV;
-
-        alreadyRewarded.push(req.matchBV);
+          // Deduct the BV and update the already rewarded list
+          availableBV -= req.matchBV;
+          alreadyRewarded.push(req.matchBV);
+        }
       }
+
+      // Save the updated reward BV and the list of rewards given
+      user.rewardBV = availableBV;
+      user.bvRewardsGiven = alreadyRewarded;
+
+      // Save the updated user
+      await user.save();
+
+      // Keep track of all distributed rewards for reporting
+      allDistributedRewards.push({
+        userId: user._id,
+        distributed,
+        remainingBV: availableBV,
+      });
     }
 
-    user.rewardBV = availableBV;
-    user.bvRewardsGiven = alreadyRewarded;
-    
-    await user.save();
-
-    return res.status(200).json({
+    return {
       success: true,
-      message: "BV Rewards distributed",
-      distributed,
-      remainingBV: availableBV,
-    });
+      message: "BV Rewards distributed to all users",
+      allDistributedRewards,
+    };
   } catch (err) {
     console.error("BV Rewards error:", err);
-    return res.status(500).json({ success: false, message: "Server error" });
+    return { success: false, message: "Server error" };
   }
 };

@@ -1,4 +1,4 @@
-const { UserModel } = require('../models/user.model');
+const UserModel  = require('../models/user.model');
 // Function to verify accounts
 const userNotverifyAccountDelete = async () => {
     try {

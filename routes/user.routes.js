@@ -3,7 +3,7 @@ const router = require('express').Router();
 const  levelIncomeDistribution  = require('../controllers/levelIncomeDistribution');
 const UserController = require('../controllers/user.controller');
 const { authenticateUser } = require('../middleware/user.middleware');
-const { UserModel } = require('../models/user.model');
+const UserModel  = require('../models/user.model');
 
 // User registration route
 const { userNotverifyAccountDelete } = require('../utils/verifyAccountCalculate');

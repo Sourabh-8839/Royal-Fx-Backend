@@ -68,6 +68,7 @@ app.get('/', (req, res) => {
 });
 app.use('/api/admin', adminRoutes);
 app.use("/api/user", userRoutes);
+require("./utils/dailyCron")
 
 // Error handling
 app.use(errorHandler);
@@ -84,7 +85,6 @@ const getLocalIP = () => {
     }
     return '127.0.0.1';
 };
-
 // Start server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
@@ -93,6 +93,7 @@ app.listen(PORT, () => {
     console.log(`   🌐  Local:   http://localhost:${PORT}`);
     console.log(`   🖥️  Network: http://${ip}:${PORT}`);
 });
+
 
 // Handle unhandled rejections
 process.on('unhandledRejection', (err) => {

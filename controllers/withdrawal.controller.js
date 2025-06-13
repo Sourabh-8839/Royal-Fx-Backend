@@ -1,5 +1,5 @@
 const { ethers } = require("ethers");
-const { UserModel } = require("../models/user.model");
+const UserModel = require("../models/user.model");
 const { WithdrawalRequestModel } = require("../models/withdrawal.model");
 const { TransactionModel } = require("../models/transaction.model");
 const { generateTxnId } = require("../utils/generateRandomReferralLink");

@@ -34,8 +34,14 @@ const userSchema = new mongoose.Schema(
             default: 0, // 5x of first investment
         },
         plan: {
+            planId: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "Plan",
+            },
+            isActive: {
+                type: Boolean,
+                default: false,
+            },
         },
         rank :{
             type : String,
@@ -71,6 +77,10 @@ const userSchema = new mongoose.Schema(
     type: Number,
     default: 0,
 },
+rewardLevel : {
+    type : String,
+    default : null  
+}
   },
 { timestamps: true, versionKey: false }
 );
@@ -95,4 +105,4 @@ const userSchema = new mongoose.Schema(
 //     }
 // });
 
-exports.UserModel = mongoose.model("Userdetail", userSchema);
+module.exports = mongoose.model("Userdetail", userSchema);

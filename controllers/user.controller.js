@@ -1,6 +1,6 @@
 const  Plan  = require("../models/plan.model");
 
-const { UserModel } = require("../models/user.model");
+const UserModel  = require("../models/user.model");
 const { getToken } = require("../utils/getTokenGenerate");
 const { getComparePassword, getHashPassword } = require("../utils/getPassword.password");
 const { getOtpGenerate } = require("../utils/getOtpGenerate");
@@ -15,6 +15,8 @@ const TradingAccount = require("../models/tradingAccount.model");
 const investmentModel = require("../models/investment.model");
 const { WithdrawalRequestModel } = require("../models/withdrawal.model");
 const royalityModel = require("../models/royality.model");
+const { level } = require("winston");
+const { distributeLevelIncome, starIncomeDistribution } = require("./levelIncomeDistribution");
 
 exports.UserRegister = async (req, res) => {
   try {
@@ -758,27 +760,27 @@ exports.purchasePlans = async (req, res) => {
       !tradingAcc || !mainPassword || !tradingPlatform || !serverName ||
       !firstName || !lastName || !email || !password
     ) {
-      return res.status(400).json({ msg: "All fields are required" });
+      return res.status(400).json({ message: "All fields are required" });
     }
 
     // Step 2: Check if the plan exists
     const plan = await Plan.findById(planId);
     if (!plan) {
-      return res.status(400).json({ msg: "Plan not found" });
+      return res.status(400).json({ message: "Plan not found" });
     }
 
     // Step 3: Check if the user has sufficient balance in their top-up wallet
-    if (user.topupWallet < investmentAmount) {
-      return res.status(400).json({ msg: "Insufficient funds in your top-up wallet" });
+    if (user.wallet.topupWallet < investmentAmount) {
+      return res.status(400).json({ message: "Insufficient funds in your top-up wallet" });
     }
 
     // Step 4: Deduct funds from the top-up wallet
-    user.topupWallet -= investmentAmount; // Deduct the investment amount from the wallet
+    user.wallet.topupWallet -= investmentAmount; // Deduct the investment amount from the wallet
 
 
-    plan.totalInvestment += investmentAmount;
+    plan.totalInvestment += Number(investmentAmount);
     
-    plan.brokerageCharge += investmentAmount * 0.20  //Update the plan's brokerage charge based on the investment amount
+    plan.brokerageCharge += Number(investmentAmount) * 0.20  //Update the plan's brokerage charge based on the investment amount
     // Update the plan's total investment
     // Step 5: Create a new trading account
     const newAccount = new TradingAccount({
@@ -795,7 +797,7 @@ exports.purchasePlans = async (req, res) => {
     });
 
     // Step 6: Save the new trading account to the database
-    await newAccount.save();
+   
 
     // Step 7: Convert investment amount to BV
     const investmentInBV = investmentAmount / 100; // 1 BV = 100 USDT
@@ -828,29 +830,35 @@ for (let tier of royaltyTiers) {
 
 
     // Step 9: Update the user's selfBV and rewardBV
-    user.isFirstPurchase = true;
     user.selfBV = (user.selfBV || 0) + investmentInBV;  // Add the investment BV to selfBV
   
     // Add the investment BV to rewardBV
-    if (!user.isFirstPurchase) {
+  
     user.firstInvestment = investmentAmount;
-    user.isFirstPurchase = true;
-    }
+    user.totalEarningLimit = 0;
+    
+    user.plan.planId = plan._id; // Associate the user with the plan
+    user.plan.isActive = true; // Set the plan as active for the user
 
-    investAmount.save();
-
+    if(!user.isFirstPurchase) {
     user.activationdetails= {
-      isActive: true,
+      isActive: true, 
       activeDate: new Date(),
     };
-
+  }
+    
+ await user.save();
+    await distributeLevelIncome(user._id)
+    console.log(distributeLevelIncome)
+    await starIncomeDistribution(user._id,investmentAmount) // Distribute level income to uplines
 
 
     // Save the updated user
-    await user.save();
+
+   
     await plan.save(); // Save the updated plan with the new total investment
-     await investAmount.save();
-      await newAccount.save();
+    await investAmount.save();
+    await newAccount.save();
 
     // Step 10: Send success response
     res.status(201).json({ message: "Trading account created successfully", account: newAccount });
@@ -858,7 +866,7 @@ for (let tier of royaltyTiers) {
   }
    catch (error) {
     console.error(error);
-    res.status(500).json({ msg: "Server error" });
+    res.status(500).json({ message: "Server error" });
   }
   
 };
