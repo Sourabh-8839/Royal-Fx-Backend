@@ -830,14 +830,13 @@ for (let tier of royaltyTiers) {
     // Step 9: Update the user's selfBV and rewardBV
     user.isFirstPurchase = true;
     user.selfBV = (user.selfBV || 0) + investmentInBV;  // Add the investment BV to selfBV
-    user.rewardBV = (user.rewardBV || 0) + investmentInBV;
   
     // Add the investment BV to rewardBV
     if (!user.isFirstPurchase) {
     user.firstInvestment = investmentAmount;
     user.isFirstPurchase = true;
     }
-    
+
     investAmount.save();
 
     user.activationdetails= {
