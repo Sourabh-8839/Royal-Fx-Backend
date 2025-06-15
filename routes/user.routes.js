@@ -40,6 +40,7 @@ router.post('/purchase-products', authenticateUser, UserController.purchasePlans
 
 router.post('/withdraw-amount', authenticateUser, UserController.Withdrawal)
 router.get('/withdrawal-history', authenticateUser, UserController.WithdrawalsHistory)
+router.post('/transfer-amount', authenticateUser, UserController.transferFunds);
 
 
 //---------------------GET PLANS--------------------------

@@ -57,10 +57,10 @@ const userSchema = new mongoose.Schema(
         isBlocked: { type: Boolean, default: false },
         isFirstPurchase: { type: Boolean, default: false },
         selfBV: { type: Number, default: 0 },
-        transaction: {
+        transaction: [{
             type: mongoose.Schema.Types.ObjectId,
             ref: "Transaction",
-        },
+        }],
         rewardBV:{
             type: Number,
             default: 0

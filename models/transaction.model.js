@@ -38,7 +38,6 @@ const transactionSchema = new mongoose.Schema({
     transactionID: {
         type: String,
         default: null,
-        unique: true
     },
 
   referenceId: {
