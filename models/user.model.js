@@ -20,6 +20,11 @@ const userSchema = new mongoose.Schema(
                 ref: "Userdetail",
             },
         ],
+        matchingBVGiven: {
+            type: Number,
+            default: 0
+        },
+
         wallet: {
             incomeWallet: { type: Number, default: 0 },
             topupWallet: { type: Number, default: 0 },
@@ -35,20 +40,20 @@ const userSchema = new mongoose.Schema(
         },
         plan: {
             planId: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: "Plan",
+                type: mongoose.Schema.Types.ObjectId,
+                ref: "Plan",
             },
             isActive: {
                 type: Boolean,
                 default: false,
             },
         },
-        rank :{
-            type : String,
-            default : null
+        rank: {
+            type: String,
+            default: null
         },
         royalty: { type: mongoose.Schema.Types.ObjectId, ref: "Royalty" },
-        referredBy: { type: mongoose.Schema.Types.ObjectId, ref: "Userdetail" , default : null },
+        referredBy: { type: mongoose.Schema.Types.ObjectId, ref: "Userdetail", default: null },
         otpdetails: {
             isVerified: { type: Boolean, default: false },
             otp: { type: String, default: null },
@@ -61,28 +66,36 @@ const userSchema = new mongoose.Schema(
             type: mongoose.Schema.Types.ObjectId,
             ref: "Transaction",
         }],
-        rewardBV:{
+        rewardBV: {
             type: Number,
             default: 0
         },
-        royaltyBV :{
+        royaltyBV: {
             type: Number,
             default: 0
         },
         bvRewardsGiven: {
-            type: [Number], 
+            type: [Number],
             default: [],
-},
-    firstInvestment: {
-    type: Number,
-    default: 0,
-},
-rewardLevel : {
-    type : String,
-    default : null  
-}
-  },
-{ timestamps: true, versionKey: false }
+        },
+        firstInvestment: {
+            type: Number,
+            default: 0,
+        },
+        rewardLevel: {
+            type: String,
+            default: null
+        },
+        totalEarnings: {
+            type: Number,
+            default: 0
+        },
+        firstInvestment: {
+            type: Number,
+            default: 0,
+        },
+    },
+    { timestamps: true, versionKey: false }
 );
 
 // // // Exclude the password field by default when converting documents to JSON or objects

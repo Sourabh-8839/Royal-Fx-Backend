@@ -40,6 +40,7 @@ exports.distributeLevelIncome = async (userId) => {
 
       uplineUser.wallet.incomeWallet = (uplineUser.wallet.incomeWallet || 0) + allowedIncome;
       uplineUser.totalEarningLimit = totalReceived + allowedIncome;
+   uplineUser.totalEarning = (uplineUser.totalEarning || 0) + allowedIncome;
       await uplineUser.save();
 
       await IncomeHistoryModel.create({
@@ -191,70 +192,94 @@ exports.starIncomeDistribution = async (investorId, investmentAmount) => {
 };
 
 
-exports.calculateMatchingBV = async (userId) => {
-  const user = await UserModel.findById(userId);
-  if (!user || !user.partners || user.partners.length === 0) return 0;
+exports.calculateMatchingBVForAllUsers = async () => {
+  try {
+    const users = await UserModel.find();
+    const allResults = [];
 
-  const partners = await UserModel.find({ _id: { $in: user.partners } });
+    for (const user of users) {
+      if (!user.partners || user.partners.length < 2) continue;
 
-  if (partners.length === 0) return 0;
+      const partners = await UserModel.find({ _id: { $in: user.partners } });
 
-  const sorted = partners.sort((a, b) => b.selfBV - a.selfBV);
-  const highestBV = sorted[0].selfBV;
-  const sumOfOthers = sorted.slice(1).reduce((acc, p) => acc + p.selfBV, 0);
+      if (partners.length < 2) continue;
 
-  const matchingBV = Math.min(highestBV, sumOfOthers);
+      const sorted = partners.sort((a, b) => b.selfBV - a.selfBV);
+      const highestBV = sorted[0].selfBV;
+      const sumOfOthers = sorted.slice(1).reduce((acc, p) => acc + p.selfBV, 0);
 
-  user.rewardBV += matchingBV;
-  user.royaltyBV += matchingBV
-  await user.save();
+      const calculatedMatchingBV = Math.min(highestBV, sumOfOthers);
 
-  return matchingBV;
+      // Prevent duplicate matching reward by subtracting already given amount
+      const alreadyGiven = user.matchingBVGiven || 0;
+      const newMatchingBV = calculatedMatchingBV - alreadyGiven;
+
+      if (newMatchingBV > 0) {
+        user.rewardBV += newMatchingBV;
+        user.royaltyBV += newMatchingBV;
+        user.matchingBVGiven = calculatedMatchingBV; // update total matched so far
+        await user.save();
+
+        allResults.push({
+          userId: user._id,
+          newMatchingBV,
+          totalMatchingBV: calculatedMatchingBV,
+          updatedRewardBV: user.rewardBV,
+          updatedRoyaltyBV: user.royaltyBV,
+        });
+
+        console.log(`User ${user._id}: +${newMatchingBV} matching BV added`);
+      }
+    }
+
+    return {
+      success: true,
+      message: "Matching BV calculated for all users (incremental).",
+      results: allResults,
+    };
+  } catch (error) {
+    console.error("Error in matching BV calculation:", error);
+    return { success: false, message: "Server error in BV matching." };
+  }
 };
+
 
 
 exports.BVRewards = async () => {
   try {
-    // Get all users
     const users = await UserModel.find();
-
     const allDistributedRewards = [];
 
-    // Loop through all users
+    const requirements = [
+      { matchBV: 25, reward: 100, rewardLevel: 1 },
+      { matchBV: 50, reward: 200, rewardLevel: 2 },
+      { matchBV: 100, reward: 400, rewardLevel: 3 },
+      { matchBV: 250, reward: 1000, rewardLevel: 4 },
+      { matchBV: 500, reward: 2000, rewardLevel: 5 },
+      { matchBV: 1000, reward: 4000, rewardLevel: 6 },
+      { matchBV: 2500, reward: 10000, rewardLevel: 7 },
+      { matchBV: 5000, reward: 20000, rewardLevel: 8 },
+      { matchBV: 10000, reward: 40000, rewardLevel: 9 },
+      { matchBV: 25000, reward: 75000, rewardLevel: 10 },
+      { matchBV: 50000, reward: 150000, rewardLevel: 11 },
+      { matchBV: 100000, reward: 300000, rewardLevel: 12 },
+      { matchBV: 250000, reward: 750000, rewardLevel: 13 },
+    ];
+
     for (const user of users) {
       let availableBV = user.rewardBV || 0;
-      if (availableBV <= 0) continue;  // Skip users with no reward BV
-
-      const requirements = [
-        { matchBV: 25, reward: 100 , rewardLevel : 1 },
-        { matchBV: 50, reward: 200 , rewardLevel : 2},
-        { matchBV: 100, reward: 400 , rewardLevel : 3},
-        { matchBV: 250, reward: 1000 , rewardLevel : 4},
-        { matchBV: 500, reward: 2000 , rewardLevel : 5},
-        { matchBV: 1000, reward: 4000 , rewardLevel : 6},
-        { matchBV: 2500, reward: 10000 , rewardLevel : 7},
-        { matchBV: 5000, reward: 20000, rewardLevel : 8},
-        { matchBV: 10000, reward: 40000 , rewardLevel : 9},
-        { matchBV: 25000, reward: 75000 , rewardLevel : 10},
-        { matchBV: 50000, reward: 150000 , rewardLevel : 11},
-        { matchBV: 100000, reward: 300000 , rewardLevel : 12},
-        { matchBV: 250000, reward: 750000 , rewardLevel : 13},
-      ];
+      if (availableBV <= 0) continue;
 
       const alreadyRewarded = user.bvRewardsGiven || [];
-      let distributed = [];
+      let rewardGiven = null;
 
-      // Loop through the requirements and distribute the rewards
       for (const req of requirements) {
         if (availableBV >= req.matchBV && !alreadyRewarded.includes(req.matchBV)) {
+          // Ensure wallet and incomeWallet are initialized
+          if (!user.wallet) user.wallet = {};
           user.wallet.incomeWallet = (user.wallet.incomeWallet || 0) + req.reward;
 
-          distributed.push({
-            matchBV: req.matchBV,
-            reward: req.reward,
-          });
-
-          // Log the reward distribution in BVRewardHistory
+          // Log reward
           await BVRewardHistory.create({
             userId: user._id,
             bv: req.matchBV,
@@ -262,30 +287,33 @@ exports.BVRewards = async () => {
             date: new Date(),
           });
 
-          // Deduct the BV and update the already rewarded list
           availableBV -= req.matchBV;
           alreadyRewarded.push(req.matchBV);
+          rewardGiven = {
+            matchBV: req.matchBV,
+            reward: req.reward,
+          };
+          break; // Only one reward per run
         }
       }
 
-      // Save the updated reward BV and the list of rewards given
-      user.rewardBV = availableBV;
-      user.bvRewardsGiven = alreadyRewarded;
+      // Save user if any reward was given
+      if (rewardGiven) {
+        user.rewardBV = availableBV;
+        user.bvRewardsGiven = alreadyRewarded;
+        await user.save();
 
-      // Save the updated user
-      await user.save();
-
-      // Keep track of all distributed rewards for reporting
-      allDistributedRewards.push({
-        userId: user._id,
-        distributed,
-        remainingBV: availableBV,
-      });
+        allDistributedRewards.push({
+          userId: user._id,
+          rewardGiven,
+          remainingBV: availableBV,
+        });
+      }
     }
 
     return {
       success: true,
-      message: "BV Rewards distributed to all users",
+      message: "One-step BV reward distributed where applicable.",
       allDistributedRewards,
     };
   } catch (err) {
@@ -293,3 +321,5 @@ exports.BVRewards = async () => {
     return { success: false, message: "Server error" };
   }
 };
+
+
