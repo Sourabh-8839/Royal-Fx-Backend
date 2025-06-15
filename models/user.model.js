@@ -24,7 +24,13 @@ const userSchema = new mongoose.Schema(
             type: Number,
             default: 0
         },
-
+        account: {
+        totalInvestment: { type: Number, default: 0.0 },
+        totalEarning: { type: Number, default: 0.0 },
+        totalReferralEarning: { type: Number, default: 0.0 },
+        totalWithdrawal: { type: Number, default: 0.0 },
+        currentIncome: { type: Number, default: 0.0 },
+    },
         wallet: {
             incomeWallet: { type: Number, default: 0 },
             topupWallet: { type: Number, default: 0 },

@@ -842,7 +842,8 @@ exports.purchasePlans = async (req, res) => {
     user.totalEarningLimit = 0;
 
     user.plan.planId = plan._id; // Associate the user with the plan
-    user.plan.isActive = true; // Set the plan as active for the user
+    user.plan.isActive = true;
+    user.account.totalInvestment = (user.account.totalInvestment || 0.0) + Number(investmentAmount); // Set the plan as active for the user
 
     if (!user.isFirstPurchase) {
       user.activationdetails = {
@@ -853,7 +854,7 @@ exports.purchasePlans = async (req, res) => {
 
     await user.save();
     await distributeLevelIncome(user._id);
-    console.log(distributeLevelIncome);
+   
     await starIncomeDistribution(user._id, investmentAmount); // Distribute level income to uplines
 
     // Save the updated user
@@ -933,6 +934,7 @@ exports.Withdrawal = async (req, res) => {
     });
 
     user.wallet.incomeWallet -= amount;
+    user.account.totalWithdrawal =(user.account.totalWithdrawal || 0) + Number(amount); // Update total withdrawal amount
     user.withdrawal.push(newWithdrawal);
     await user.save();
     await newWithdrawal.save();

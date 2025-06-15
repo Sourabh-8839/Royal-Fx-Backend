@@ -40,7 +40,8 @@ exports.distributeLevelIncome = async (userId) => {
 
       uplineUser.wallet.incomeWallet = (uplineUser.wallet.incomeWallet || 0) + allowedIncome;
       uplineUser.totalEarningLimit = totalReceived + allowedIncome;
-   uplineUser.totalEarning = (uplineUser.totalEarning || 0) + allowedIncome;
+      uplineUser.account.totalEarning = (uplineUser.account.totalEarning || 0) + allowedIncome;
+      uplineUser.account.totalReferralEarning = (uplineUser.account.totalReferralEarning || 0) + allowedIncome;
       await uplineUser.save();
 
       await IncomeHistoryModel.create({
@@ -170,6 +171,7 @@ exports.starIncomeDistribution = async (investorId, investmentAmount) => {
 
             uplineUser.wallet.incomeWallet = (uplineUser.wallet.incomeWallet || 0) + allowedReward;
             uplineUser.totalEarningLimit = currentEarnings + allowedReward;
+            
             await uplineUser.save();
 
             await IncomeHistoryModel.create({
@@ -278,6 +280,7 @@ exports.BVRewards = async () => {
           // Ensure wallet and incomeWallet are initialized
           if (!user.wallet) user.wallet = {};
           user.wallet.incomeWallet = (user.wallet.incomeWallet || 0) + req.reward;
+          user.account.totalEarning = (user.account.totalEarning || 0) + req.reward;
 
           // Log reward
           await BVRewardHistory.create({

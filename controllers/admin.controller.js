@@ -310,7 +310,8 @@ exports.updateWithdrawalStatus = async (req, res) => {
       if (!user) {
         return res.status(404).json({ message: 'User not found' });
       }
-      user.wallet.topupWallet += withdrawalRequest.amount;
+      user.wallet.incomeWallet += withdrawalRequest.amount;
+      user.account.totalWithdrawal -= withdrawalRequest.amount;
       await user.save();
       await withdrawalRequest.save();
       return res.status(200).json({ status: true, message: 'Withdrawal status updated to rejected' });
