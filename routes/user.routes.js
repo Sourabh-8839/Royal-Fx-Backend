@@ -3,8 +3,6 @@ const router = require('express').Router();
 const  levelIncomeDistribution  = require('../controllers/levelIncomeDistribution');
 const UserController = require('../controllers/user.controller');
 const { authenticateUser } = require('../middleware/user.middleware');
-const UserModel  = require('../models/user.model');
-
 // User registration route
 const { userNotverifyAccountDelete } = require('../utils/verifyAccountCalculate');
 setInterval(() => {
@@ -27,7 +25,7 @@ router.post('/password-forgot', UserController.PasswordForgot);
 router.post('/verify-forgot-password-otp', UserController.VerifyForgotPasswordOtp);
 
 router.get('/profile', authenticateUser, UserController.UserProfile);
-
+router.get("/get-direct-users" , authenticateUser , UserController.getReferrals)
 router.post('/fill-vendor-details/:id', UserController.fillVendorDetails);
 router.post('/fill-vendor-details/:id/update', UserController.fillVendorDetails);
 
@@ -42,11 +40,12 @@ router.post('/withdraw-amount', authenticateUser, UserController.Withdrawal)
 router.get('/withdrawal-history', authenticateUser, UserController.WithdrawalsHistory)
 router.post('/transfer-amount', authenticateUser, UserController.transferFunds);
 
-
 //---------------------GET PLANS--------------------------
 router.get("/get-plans" , UserController.getPlans)
 //----------------------GET LEVEL INCOME HISTORY---------------
 router.get("/get-level-history" , authenticateUser , levelIncomeDistribution.getMyLevelHistory)
+//-----------------------STOP STRATEGY-------------------------
+router.post("/stop-strategy" , authenticateUser , UserController.stopStrategy)
 
 
 module.exports = router;

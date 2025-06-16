@@ -1,12 +1,12 @@
 const user = require('../models/admin.model');
 const jwt = require('jsonwebtoken');
 const { sendEmail } = require('../utils/email');
-const { getComparePassword, getHashPassword } = require('../utils/encrypt');
+const { getComparePassword, getHashPassword } = require("../utils/getPassword.password");
 const Plan = require('../models/plan.model');
 const royalityModel = require('../models/royality.model');
 const { WithdrawalRequestModel } = require('../models/withdrawal.model');
 const { WithdrawalUsdt } = require('./withdrawal.controller');
-
+const UserModel = require("../models/user.model")
 
 exports.loginAdmin = async (req, res, next) => {
   try {
@@ -16,47 +16,54 @@ exports.loginAdmin = async (req, res, next) => {
       return res.status(400).json({ message: 'Email and password are required' });
     }
 
-    // Find admin username
-    const admin = await user.findOne({ email });
+    console.log('Received email:', email);
+    console.log('Received password:', password);
+
+    const admin = await user.findOne({ email }).select('+password');
+
     if (!admin) {
       return res.status(401).json({ message: 'Invalid email or password' });
     }
 
-    //compre password
-    const isMatch = await getComparePassword(admin, password);
+    // Compare the hashed password using getComparePassword
+    const isMatch = await getComparePassword(password, admin.password);
+
     if (!isMatch) {
       return res.status(401).json({ message: 'Invalid email or password' });
     }
 
-    // Generate jdablooT token
+    // Generate JWT token
     const token = jwt.sign(
       { id: admin._id, role: admin.role },
       process.env.JWT_SECRET,
       { expiresIn: process.env.JWT_EXPIRES_IN }
     );
-    // save token to cookie
+
+    // Set token in cookie
     res.cookie('token', token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
+      secure: process.env.NODE_ENV === 'production',  // Ensure secure cookies for production
+      maxAge: 30 * 24 * 60 * 60 * 1000  // 30 days expiration
     });
 
-    // Update last login
+    // Update last login date
     admin.lastLogin = new Date();
     await admin.save();
-    req.admin = admin;
 
+    // Return success response
     res.status(200).json({
       message: 'Login successful',
       token,
       admin: {
         id: admin._id,
         email: admin.email,
+        role: admin.role,
         lastLogin: admin.lastLogin
       }
     });
   } catch (error) {
-    next(error); // Forward kardena bhaiya error ko
+    console.error('Error during login:', error);
+    next(error);
   }
 };
 
@@ -321,5 +328,15 @@ exports.updateWithdrawalStatus = async (req, res) => {
   } catch (error) {
     console.error('Error updating withdrawal status:', error);
     res.status(500).json({ message: error.message });
+  }
+}
+
+
+exports.getUsers = async(req , res)=>{
+  try {
+    let data = await UserModel.find().populate("plan" , "planId")
+    res.status(200).json({message : "Users fetched successfully" , data : data , success : true})
+  } catch (error) {
+    res.status(500).json({message : "Internal server error" , error, success : false})
   }
 }

@@ -4,7 +4,6 @@ const UserModel = require("../models/user.model");
 exports.royaltyDistribution = async (req, res) => {
   try {
     const royaltyLevels = await RoyaltyModel.find({});
-
     for (let royalty of royaltyLevels) {
       const eligibleUsers = await UserModel.find({
         royaltyBV: { $gte: royalty.matchingBV },

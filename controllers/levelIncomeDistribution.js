@@ -212,14 +212,13 @@ exports.calculateMatchingBVForAllUsers = async () => {
 
       const calculatedMatchingBV = Math.min(highestBV, sumOfOthers);
 
-      // Prevent duplicate matching reward by subtracting already given amount
       const alreadyGiven = user.matchingBVGiven || 0;
       const newMatchingBV = calculatedMatchingBV - alreadyGiven;
 
       if (newMatchingBV > 0) {
         user.rewardBV += newMatchingBV;
         user.royaltyBV += newMatchingBV;
-        user.matchingBVGiven = calculatedMatchingBV; // update total matched so far
+        user.matchingBVGiven = calculatedMatchingBV; 
         await user.save();
 
         allResults.push({
@@ -277,12 +276,10 @@ exports.BVRewards = async () => {
 
       for (const req of requirements) {
         if (availableBV >= req.matchBV && !alreadyRewarded.includes(req.matchBV)) {
-          // Ensure wallet and incomeWallet are initialized
           if (!user.wallet) user.wallet = {};
           user.wallet.incomeWallet = (user.wallet.incomeWallet || 0) + req.reward;
           user.account.totalEarning = (user.account.totalEarning || 0) + req.reward;
 
-          // Log reward
           await BVRewardHistory.create({
             userId: user._id,
             bv: req.matchBV,
@@ -296,11 +293,11 @@ exports.BVRewards = async () => {
             matchBV: req.matchBV,
             reward: req.reward,
           };
-          break; // Only one reward per run
+          break; 
         }
       }
 
-      // Save user if any reward was given
+    
       if (rewardGiven) {
         user.rewardBV = availableBV;
         user.bvRewardsGiven = alreadyRewarded;

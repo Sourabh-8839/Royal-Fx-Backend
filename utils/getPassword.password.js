@@ -9,19 +9,20 @@
 const bcrypt = require('bcryptjs');
 
 // Hash the password
+
+
 exports.getHashPassword = async function (password) {
-    const saltRounds = 10;
-    const hashedPassword = await bcrypt.hash(password, saltRounds);
-    return hashedPassword;
+  const saltRounds = 10;
+  return await bcrypt.hash(password, saltRounds);
 };
 
-// Compare the password
-exports.getComparePassword = async function (user, password) {
-    try {
-        // user.password is the hashed password stored in DB
-        const isMatch = await bcrypt.compare(password, user.password);
-        return isMatch;
-    } catch (err) {
-        return false;
-    }
+// ✅ Clean and reusable
+exports.getComparePassword = async function (plainPassword, hashedPassword) {
+  try {
+    return await bcrypt.compare(plainPassword, hashedPassword);
+  } catch (err) {
+    console.error("Password compare error:", err);
+    return false;
+  }
 };
+

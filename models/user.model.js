@@ -25,12 +25,12 @@ const userSchema = new mongoose.Schema(
             default: 0
         },
         account: {
-        totalInvestment: { type: Number, default: 0.0 },
-        totalEarning: { type: Number, default: 0.0 },
-        totalReferralEarning: { type: Number, default: 0.0 },
-        totalWithdrawal: { type: Number, default: 0.0 },
-        currentIncome: { type: Number, default: 0.0 },
-    },
+            totalInvestment: { type: Number, default: 0.0 },
+            totalEarning: { type: Number, default: 0.0 },
+            totalReferralEarning: { type: Number, default: 0.0 },
+            totalWithdrawal: { type: Number, default: 0.0 },
+            currentIncome: { type: Number, default: 0.0 },
+        },
         wallet: {
             incomeWallet: { type: Number, default: 0 },
             topupWallet: { type: Number, default: 0 },
@@ -72,6 +72,10 @@ const userSchema = new mongoose.Schema(
             type: mongoose.Schema.Types.ObjectId,
             ref: "Transaction",
         }],
+        InvestProfit : {
+         type : mongoose.Schema.Types.ObjectId,
+         ref : "Profit"
+        },
         rewardBV: {
             type: Number,
             default: 0

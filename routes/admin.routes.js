@@ -21,7 +21,7 @@ router.use(checkAdminLoggedIn);
 
 router.get('/get-admin', checkAdminLoggedIn, adminController.getAdmin);
 
-
+router.get("/get-all-users" , adminController.getUsers)
 router.get('/get-withdrawal-history', checkAdminLoggedIn, adminController.getWithdrawalHistory);
 
 router.post('/update-withdrawal-status/:id', checkAdminLoggedIn, adminController.updateWithdrawalStatus);

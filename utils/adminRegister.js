@@ -1,5 +1,5 @@
 const { hash } = require("bcryptjs");
-const { AdminModel } = require("../models/admin/admin.model");
+const { AdminModel } = require("../models/admin.model");
 const { getHashPassword } = require("./getPassword.password");
 
 const adminRegister = async () => {

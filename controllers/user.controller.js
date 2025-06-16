@@ -23,6 +23,8 @@ const {
   starIncomeDistribution,
 } = require("./levelIncomeDistribution");
 const transactionModel = require("../models/transaction.model");
+const ProfitModel = require("../models/InvestProfit.model");
+
 
 exports.UserRegister = async (req, res) => {
   try {
@@ -82,6 +84,9 @@ exports.UserRegister = async (req, res) => {
         });
       }
     }
+
+  
+
 
     const generatedUsername = randomUser();
     let referredByUser = null;
@@ -197,17 +202,46 @@ exports.UserOTPVerify = async (req, res) => {
 
 exports.UserProfile = async (req, res) => {
   const userId = req.user._id;
+
   try {
-    let data = await UserModel.findById(userId).populate("referredBy");
-    res
-      .status(200)
-      .json({ message: "Data fetched successfully", data: data, status: true });
+    // User data with referredBy populated
+    const user = await UserModel.findById(userId).populate("referredBy").lean();
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found", status: false });
+    }
+
+    // Dashboard stats
+    const totalEarning = user.account?.totalEarning || 0;
+    const totalInvestment = user.account?.totalInvestment || 0;
+    const activeStrategy = user.plan?.isActive ? user.plan?.name : null;
+    const totalWithdrawal = user.account?.totalWithdrawal || 0;
+    const totalReferral = user.account?.totalReferralEarning || 0;
+
+    res.status(200).json({
+      message: "User profile & dashboard stats fetched successfully",
+      status: true,
+      data: {
+        userProfile: user,
+        dashboardStats: {
+          totalEarning,
+          totalInvestment,
+          activeStrategy,
+          totalWithdrawal,
+          totalReferral
+        }
+      }
+    });
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Internal server error", error, status: false });
+    console.error("UserProfile error:", error);
+    res.status(500).json({
+      message: "Internal server error",
+      status: false,
+      error
+    });
   }
 };
+
 
 exports.UserChangePassword = async (req, res) => {
   const { oldPassword, newPassword } = req.body;
@@ -1036,7 +1070,7 @@ exports.transferFunds = async (req, res) => {
     });
     await transaction.save();
 
-    user.transaction.push(transaction._id); // Add transaction to user's transaction history
+    user.transaction.push(transaction._id);
 
     await user.save();
 
@@ -1046,3 +1080,63 @@ exports.transferFunds = async (req, res) => {
     return res.status(500).json({ success: false, message: error.message });
   }
 };
+
+
+exports.getReferrals = async(req , res)=>{
+  let userId = req.user._id
+  try {
+    let data = await UserModel.findById(userId).select('partners').populate('partners')
+    res.status(201).json({message : "Referrals fetched successfully" , data : data , success : true} )
+  } catch (error) {
+    res.status(500).json({message : "Internal Server error" , error , status : false})
+  }
+}
+
+
+
+exports.stopStrategy = async (req, res) => {
+  const userId = req.user._id;
+
+  try {
+    const user = await UserModel.findById(userId);
+    if (!user || !user.plan?.isActive) {
+      return res.status(400).json({ message: "No active strategy found.", success: false });
+    }
+
+    const investmentAmount = user.account.totalInvestment || 0;
+
+    const profitDoc = await ProfitModel.findOne({ userId });
+    const profitAmount = profitDoc?.profitAmount || 0;
+
+    user.wallet.topupWallet += investmentAmount + profitAmount;
+
+    user.plan.isActive = false;
+    user.account.totalInvestment = 0;
+    user.account.currentIncome = 0;
+    user.currentEarnings = 0;
+    user.totalEarningLimit = 0;
+
+    if (profitDoc) {
+      await ProfitModel.deleteOne({ _id: profitDoc._id });
+    }
+
+    await user.save();
+
+    return res.status(200).json({
+      message: "Strategy stopped and amounts refunded to topup wallet.",
+      refunded: {
+        investmentAmount,
+        profitAmount,
+        totalRefunded: investmentAmount + profitAmount,
+      },
+      success: true,
+    });
+
+  } catch (error) {
+    console.error("Stop Strategy Error:", error);
+    return res.status(500).json({ message: "Server Error", error, success: false });
+  }
+};
+
+
+

@@ -8,7 +8,8 @@ cron.schedule("* * * * *", async () => {
             console.log("Daily cron job started");
             
             await calculateMatchingBVForAllUsers()
-           
+            await updateRank()
+           await BVRewards()
 
         //    console.log("Rank update completed:", val);
             console.log("Daily cron job completed successfully");
