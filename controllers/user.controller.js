@@ -351,7 +351,7 @@ exports.UserLogin = async (req, res) => {
         message: "User is blocked. Contact support.",
       });
 
-    const isMatch = await getComparePassword(user, password);
+    const isMatch = await getComparePassword(password, user.password);
     if (!isMatch)
       return res
         .status(400)
