@@ -42,6 +42,7 @@ router.post('/transfer-amount', authenticateUser, UserController.transferFunds);
 
 //---------------------GET PLANS--------------------------
 router.get("/get-plans" , UserController.getPlans)
+router.get("/get-investment" , authenticateUser , UserController.getMyinvestment)
 //----------------------GET LEVEL INCOME HISTORY---------------
 router.get("/get-level-history" , authenticateUser , levelIncomeDistribution.getMyLevelHistory)
 //-----------------------STOP STRATEGY-------------------------

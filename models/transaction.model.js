@@ -3,7 +3,7 @@ const mongoose = require("mongoose")
 const transactionSchema = new mongoose.Schema({
   userId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
+    ref: 'Userdetail',
     required: true
   },
   type: {
@@ -41,7 +41,7 @@ const transactionSchema = new mongoose.Schema({
     },
 
   referenceId: {
-    type: mongoose.Schema.Types.ObjectId // Investment ID or other reference
+    type: mongoose.Schema.Types.ObjectId 
   },
   status: {
     type: String,

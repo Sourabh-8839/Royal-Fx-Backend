@@ -927,6 +927,18 @@ exports.getPlans = async (req, res) => {
   }
 };
 
+
+exports.getMyinvestment = async(req , res)=>{
+  let userId = req.user._id;
+  try {
+    let data = await investmentModel.findById(userId)
+    res.status(200).json({message : "Data fetched successfully" , data : data , success : true})
+  } catch (error) {
+    res.status(200).json({message : "Internal server error" ,error , success : false})
+    
+  }
+}
+
 exports.Withdrawal = async (req, res) => {
   try {
     const { amount, walletAddress } = req.body;

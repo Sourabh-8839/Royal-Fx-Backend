@@ -6,7 +6,9 @@ const Plan = require('../models/plan.model');
 const royalityModel = require('../models/royality.model');
 const { WithdrawalRequestModel } = require('../models/withdrawal.model');
 const { WithdrawalUsdt } = require('./withdrawal.controller');
-const UserModel = require("../models/user.model")
+const UserModel = require("../models/user.model");
+const investmentModel = require('../models/investment.model');
+const transactionModel = require('../models/transaction.model');
 
 exports.loginAdmin = async (req, res, next) => {
   try {
@@ -338,5 +340,97 @@ exports.getUsers = async(req , res)=>{
     res.status(200).json({message : "Users fetched successfully" , data : data , success : true})
   } catch (error) {
     res.status(500).json({message : "Internal server error" , error, success : false})
+  }
+}
+
+exports.adminStats = async (req, res) => {
+  try {
+    const totalUsers = await UserModel.countDocuments();
+
+    const activeUsers = await UserModel.countDocuments({ "activationdetails.isActive": true });
+    const inactiveUsers = await UserModel.countDocuments({ "activationdetails.isActive": false });
+
+    const userAggregate = await UserModel.aggregate([
+      {
+        $group: {
+          _id: null,
+          totalInvestment: { $sum: "$account.totalInvestment" },
+          totalEarning: { $sum: "$account.totalEarning" },
+          totalIncomeWallet: { $sum: "$wallet.incomeWallet" }
+        }
+      }
+    ]);
+
+    const totalInvestment = userAggregate[0]?.totalInvestment || 0;
+    const totalEarning = userAggregate[0]?.totalEarning || 0;
+    const totalIncome = userAggregate[0]?.totalIncomeWallet || 0;
+
+    const planAggregate = await Plan.aggregate([
+      {
+        $group: {
+          _id: null,
+          totalBrokerage: { $sum: "$brokerageCharge" }
+        }
+      }
+    ]);
+
+    const totalBrokerage = planAggregate[0]?.totalBrokerage || 0;
+
+    const totalPlans = await Plan.countDocuments();
+
+    const withdrawalAggregate = await WithdrawalRequestModel.aggregate([
+      { $match: { status: "Completed" } },
+      {
+        $group: {
+          _id: null,
+          totalWithdrawn: { $sum: "$amount" }
+        }
+      }
+    ]);
+
+    const totalWithdrawal = withdrawalAggregate[0]?.totalWithdrawn || 0;
+
+    res.status(200).json({
+      success: true,
+      data: {
+        totalUsers,
+        activeUsers,
+        inactiveUsers,
+        totalInvestment,
+        totalEarning,
+        totalIncome,
+        totalWithdrawal,
+        totalBrokerage,
+        totalPlans
+      }
+    });
+
+  } catch (error) {
+    console.error("Admin stats error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong while fetching admin statistics."
+    });
+  }
+};
+
+exports.purchaseHistory = async(req , res)=>{
+  try {
+    let data = await investmentModel.find().populate("userId" , "name").populate("plan" , "name")
+     res.status(200).json({message : "Data fetched successfully" , data : data , success : true})
+  } catch (error) {
+     res.status(500).json({message : "Internal server error" , error , success : false})
+  }
+}
+
+exports.transactionHistory = async(req , res)=>{
+  try {
+    let data = await transactionModel.find().populate("userId" , "name")
+    // console.log(data)
+    res.status(200).json({message : "Data fetched successfully" , data : data , success :true})
+  } catch (error) {
+    // console.log(error)
+    res.status(500).json({message : "Internal server error" , error , success :false})
+    
   }
 }

@@ -90,15 +90,27 @@ exports.getMyLevelHistory = async (req, res) => {
   }
 };
 
-exports.getTotalLevelIncome = async (userId) => {
-  const result = await IncomeHistoryModel.aggregate([
-    { $match: { receiver: userId } },
-    { $group: { _id: null, total: { $sum: "$amount" } } }
-  ]);
+exports.getTotalLevelIncome = async (req, res) => {
+  try {
+    const data = await IncomeHistoryModel.find()
+      .populate("receiver", "name")   
+      .populate("fromUser" , "name");   
 
-  return result.length > 0 ? result[0].total : 0;
+
+
+    res.status(200).json({
+      success: true,
+      message: "Income fetched successfully",
+      data,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
 };
-
 
 exports.updateRank = async () => {
   try {

@@ -15,12 +15,14 @@ router.get('/logout', adminController.logoutAdmin);
 router.post('/create-plan', adminController.createPlan);
 router.post('/create-royalty', adminController.createRoyalty);
 //--------------GET LEVEL HISTORY--------------------------------
-router.get("/get-level" , checkAdminLoggedIn , levelIncomeDistribution.getTotalLevelIncome)
+router.get("/get-income-history" , checkAdminLoggedIn , levelIncomeDistribution.getTotalLevelIncome)
+router.get("/get-purchase-history" , checkAdminLoggedIn , adminController.purchaseHistory)
+router.get("/get-roi-history" , checkAdminLoggedIn , adminController.transactionHistory)
 // Apply authentication middleware to routes that require authentication
 router.use(checkAdminLoggedIn);
 
 router.get('/get-admin', checkAdminLoggedIn, adminController.getAdmin);
-
+router.get("/get-dashboard-data" , adminController.adminStats)
 router.get("/get-all-users" , adminController.getUsers)
 router.get('/get-withdrawal-history', checkAdminLoggedIn, adminController.getWithdrawalHistory);
 
