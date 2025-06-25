@@ -748,7 +748,7 @@ exports.deposit = async (req, res) => {
         .json({ success: false, message: "Invalid amount." });
 
     const txnId = generateTxnId();
-    const transaction = await TransactionModel.create({
+    const transaction = await transactionModel.create({
       userId: user._id,
       amount: Number(amount),
       clientAddress: userAddress,
@@ -770,6 +770,19 @@ exports.deposit = async (req, res) => {
     return res.status(500).json({ success: false, message: error.message });
   }
 };
+
+
+exports.getTransactionHistory = async (req, res) => {
+  try {
+    let userId = req.user._id;
+    let data = await transactionModel.find({ userId: userId })
+
+    return res.status(200).json({ success: true, data: data });
+  } catch (error) {
+    console.error("Error fetching transaction history:", error);  
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+}
 
 exports.purchasePlans = async (req, res) => {
   try {

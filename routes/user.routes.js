@@ -33,7 +33,7 @@ router.get('/get-all-users', UserController.getAllUsers)
 router.get('/get-user-details/:id', UserController.getUserDetails)
 
 router.post('/deposit-amount', authenticateUser, UserController.deposit);
-
+router.get("/get-transaction-history", authenticateUser, UserController.getTransactionHistory);
 router.post('/purchase-products', authenticateUser, UserController.purchasePlans);
 
 router.post('/withdraw-amount', authenticateUser, UserController.Withdrawal)
